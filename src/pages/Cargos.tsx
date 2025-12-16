@@ -3,8 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { mockCargos } from "@/data/mock-data";
 import { CargoStatus } from "@/types/supply-chain";
+import { CargoForm } from "@/components/forms/CargoForm";
+import { mockOrders } from "@/data/mock-data";
 import { useState } from "react";
-import { Search, Package, MapPin, Scale, Box } from "lucide-react";
+import { Search, Package, Scale, Box } from "lucide-react";
 
 const statusConfig: Record<CargoStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   at_warehouse: { label: "На складе", variant: "secondary" },
@@ -18,24 +20,26 @@ const Cargos = () => {
 
   const filteredCargos = mockCargos.filter(
     (cargo) =>
-      cargo.trackingNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cargo.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cargo.currentLocation.toLowerCase().includes(searchQuery.toLowerCase())
+      cargo.cargoId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cargo.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Грузы</h1>
-        <p className="text-muted-foreground">Отслеживание всех грузов в системе</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Грузы</h1>
+          <p className="text-muted-foreground">Отслеживание всех грузов в системе</p>
+        </div>
+        <CargoForm orders={mockOrders} />
       </div>
 
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Поиск по номеру, описанию, локации..."
+          placeholder="Поиск по номеру, описанию..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
@@ -51,11 +55,11 @@ const Cargos = () => {
                 <div className="space-y-1">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Package className="h-4 w-4 text-primary" />
-                    {cargo.trackingNumber}
+                    {cargo.cargoId}
                   </CardTitle>
                 </div>
-                <Badge variant={statusConfig[cargo.status].variant}>
-                  {statusConfig[cargo.status].label}
+                <Badge variant={statusConfig[cargo.currentStatus].variant}>
+                  {statusConfig[cargo.currentStatus].label}
                 </Badge>
               </div>
             </CardHeader>
@@ -63,16 +67,12 @@ const Cargos = () => {
               <p className="text-sm text-muted-foreground">{cargo.description}</p>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span className="truncate">{cargo.currentLocation}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
                   <Scale className="h-4 w-4" />
                   <span>{cargo.weight} кг</span>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground col-span-2">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <Box className="h-4 w-4" />
-                  <span>{cargo.volume} м³ • {cargo.events.length} событий</span>
+                  <span>{cargo.volume} м³</span>
                 </div>
               </div>
             </CardContent>

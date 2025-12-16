@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { OrdersTable } from "@/components/orders/OrdersTable";
-import { mockOrders } from "@/data/mock-data";
-import { Plus } from "lucide-react";
+import { OrderForm } from "@/components/forms/OrderForm";
+import { mockOrders, mockContractors } from "@/data/mock-data";
 
 const Orders = () => {
   return (
@@ -12,10 +12,7 @@ const Orders = () => {
           <h1 className="text-2xl font-bold text-foreground">Заказы</h1>
           <p className="text-muted-foreground">Управление и отслеживание всех заказов</p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Новый заказ
-        </Button>
+        <OrderForm contractors={mockContractors} />
       </div>
 
       {/* Orders Table */}

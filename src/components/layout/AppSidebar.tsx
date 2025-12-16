@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Truck, MapPin, Settings, ChevronLeft, ChevronRight, Building2, Warehouse, Car } from "lucide-react";
+import { LayoutDashboard, Package, Truck, MapPin, Settings, ChevronLeft, ChevronRight, Building2, Warehouse, Car, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ const menuItems = [
   { title: "Контрагенты", url: "/contractors", icon: Building2 },
   { title: "Склады", url: "/warehouses", icon: Warehouse },
   { title: "Транспорт", url: "/transport", icon: Car },
+  { title: "Отчеты", url: "/reports", icon: BarChart3 },
   { title: "Карта", url: "/map", icon: MapPin },
 ];
 

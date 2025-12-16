@@ -46,15 +46,12 @@ export function RecentOrders({ orders }: RecentOrdersProps) {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {order.origin} → {order.destination}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {order.customer}
+                  {order.sender?.name || '—'} → {order.recipient?.name || '—'}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium">
-                  {order.totalWeight} кг
+                  {order.totalCost.toLocaleString()} ₽
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {format(new Date(order.createdAt), 'dd MMM yyyy', { locale: ru })}

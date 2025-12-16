@@ -34,7 +34,7 @@ const statusConfig: Record<OrderStatus, { label: string; variant: "default" | "s
   cancelled: { label: "Отменён", variant: "destructive" },
 };
 
-type SortField = 'orderNumber' | 'createdAt' | 'status' | 'totalWeight';
+type SortField = 'orderNumber' | 'createdAt' | 'status' | 'totalCost';
 type SortDirection = 'asc' | 'desc';
 
 export function OrdersTable({ orders }: OrdersTableProps) {
@@ -56,9 +56,8 @@ export function OrdersTable({ orders }: OrdersTableProps) {
     .filter((order) => {
       const matchesSearch =
         order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.destination.toLowerCase().includes(searchQuery.toLowerCase());
+        order.sender?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.recipient?.name?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || order.status === statusFilter;
       return matchesSearch && matchesStatus;
     })
@@ -74,8 +73,8 @@ export function OrdersTable({ orders }: OrdersTableProps) {
         case 'status':
           comparison = a.status.localeCompare(b.status);
           break;
-        case 'totalWeight':
-          comparison = a.totalWeight - b.totalWeight;
+        case 'totalCost':
+          comparison = a.totalCost - b.totalCost;
           break;
       }
       return sortDirection === 'asc' ? comparison : -comparison;
@@ -87,7 +86,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Поиск по номеру, клиенту, маршруту..."
+            placeholder="Поиск по номеру, контрагенту..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -133,8 +132,8 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                   <ArrowUpDown className="h-3 w-3" />
                 </Button>
               </TableHead>
-              <TableHead>Маршрут</TableHead>
-              <TableHead>Клиент</TableHead>
+              <TableHead>Отправитель</TableHead>
+              <TableHead>Получатель</TableHead>
               <TableHead>
                 <Button
                   variant="ghost"
@@ -150,10 +149,10 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleSort('totalWeight')}
+                  onClick={() => handleSort('totalCost')}
                   className="-ml-4 h-8 gap-1"
                 >
-                  Вес (кг)
+                  Стоимость
                   <ArrowUpDown className="h-3 w-3" />
                 </Button>
               </TableHead>
@@ -170,20 +169,15 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm">
-                    {order.origin} → {order.destination}
-                  </span>
+                  <span className="text-sm">{order.sender?.name || '—'}</span>
                 </TableCell>
                 <TableCell>
-                  <div>
-                    <p className="text-sm font-medium">{order.customer}</p>
-                    <p className="text-xs text-muted-foreground">{order.contractor}</p>
-                  </div>
+                  <span className="text-sm">{order.recipient?.name || '—'}</span>
                 </TableCell>
                 <TableCell>
                   {format(new Date(order.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })}
                 </TableCell>
-                <TableCell>{order.totalWeight.toLocaleString()}</TableCell>
+                <TableCell>{order.totalCost.toLocaleString()} ₽</TableCell>
                 <TableCell>
                   <Button variant="ghost" size="icon" asChild>
                     <Link to={`/orders/${order.id}`}>

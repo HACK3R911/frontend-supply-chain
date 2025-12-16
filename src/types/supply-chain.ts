@@ -1,52 +1,111 @@
+// Статусы
 export type OrderStatus = 'pending' | 'in_transit' | 'delivered' | 'cancelled';
 export type CargoStatus = 'at_warehouse' | 'in_transit' | 'delivered' | 'delayed';
 export type EventType = 'created' | 'departed' | 'arrived' | 'delivered' | 'delayed' | 'customs';
+export type ContractorRole = 'supplier' | 'carrier' | 'client';
+export type WarehouseType = 'main' | 'transit' | 'distribution';
+export type TransportType = 'truck' | 'ship' | 'plane' | 'train';
+export type RouteLegStatus = 'completed' | 'active' | 'pending';
 
-export interface Order {
+// Контрагент
+export interface Contractor {
   id: string;
-  orderNumber: string;
-  status: OrderStatus;
-  origin: string;
-  destination: string;
-  customer: string;
-  contractor: string;
-  createdAt: string;
-  estimatedDelivery: string;
-  actualDelivery?: string;
-  totalWeight: number;
-  totalVolume: number;
-  cargos: Cargo[];
+  name: string;
+  inn: string;
+  legalAddress: string;
+  contacts: string;
+  role: ContractorRole;
 }
 
-export interface Cargo {
+// Склад
+export interface Warehouse {
   id: string;
-  trackingNumber: string;
-  description: string;
-  weight: number;
-  volume: number;
-  status: CargoStatus;
-  currentLocation: string;
-  events: TrackingEvent[];
+  name: string;
+  address: string;
+  type: WarehouseType;
+  contactPersonId?: string;
 }
 
-export interface TrackingEvent {
-  id: string;
-  type: EventType;
-  location: string;
-  timestamp: string;
-  description: string;
+// Транспортное средство
+export interface Transport {
+  regNumber: string;
+  type: TransportType;
+  capacity: number;
   coordinates?: {
     lat: number;
     lng: number;
   };
+  contractorId?: string;
 }
 
+// Заказ
+export interface Order {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  shipmentDate?: string;
+  deliveryDate?: string;
+  totalCost: number;
+  status: OrderStatus;
+  senderId: string;
+  recipientId: string;
+  // Связанные данные для отображения
+  sender?: Contractor;
+  recipient?: Contractor;
+  cargos?: Cargo[];
+}
+
+// Груз
+export interface Cargo {
+  id: string;
+  cargoId: string;
+  orderId: string;
+  weight: number;
+  volume: number;
+  description: string;
+  currentStatus: CargoStatus;
+  // Связанные данные
+  order?: Order;
+  routeLegs?: RouteLeg[];
+}
+
+// Участок маршрута
+export interface RouteLeg {
+  id: string;
+  cargoId: string;
+  startWarehouseId: string;
+  endWarehouseId: string;
+  sequenceOrder: number;
+  plannedStart?: string;
+  assignedTransportId?: string;
+  status: RouteLegStatus;
+  // Связанные данные
+  startWarehouse?: Warehouse;
+  endWarehouse?: Warehouse;
+  assignedTransport?: Transport;
+  events?: TrackingEvent[];
+}
+
+// Событие
+export interface TrackingEvent {
+  id: string;
+  routeLegId: string;
+  eventType: EventType;
+  timestamp: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  description: string;
+}
+
+// Для совместимости со старым кодом
 export interface RouteSegment {
   id: string;
   from: string;
   to: string;
-  status: 'completed' | 'active' | 'pending';
+  status: RouteLegStatus;
   startTime?: string;
   endTime?: string;
-  transportType: 'truck' | 'ship' | 'plane' | 'train';
+  transportType: TransportType;
 }

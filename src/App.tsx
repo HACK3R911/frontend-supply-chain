@@ -8,6 +8,9 @@ import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import Cargos from "./pages/Cargos";
+import Contractors from "./pages/Contractors";
+import Warehouses from "./pages/Warehouses";
+import Transport from "./pages/Transport";
 import Map from "./pages/Map";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -26,6 +29,9 @@ const App = () => (
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/:id" element={<OrderDetail />} />
             <Route path="/cargos" element={<Cargos />} />
+            <Route path="/contractors" element={<Contractors />} />
+            <Route path="/warehouses" element={<Warehouses />} />
+            <Route path="/transport" element={<Transport />} />
             <Route path="/map" element={<Map />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />

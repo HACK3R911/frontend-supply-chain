@@ -1,24 +1,29 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { mockCargos } from "@/data/mock-data";
-import { MapPin, Truck, Package } from "lucide-react";
+import { mockCargos, mockTransport } from "@/data/mock-data";
+import { CargoStatus, TransportType } from "@/types/supply-chain";
+import { MapPin, Truck, Package, Ship, Plane, Train } from "lucide-react";
+
+const statusConfig: Record<CargoStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  at_warehouse: { label: "На складе", variant: "secondary" },
+  in_transit: { label: "В пути", variant: "default" },
+  delivered: { label: "Доставлен", variant: "outline" },
+  delayed: { label: "Задержка", variant: "destructive" },
+};
+
+const transportIcons: Record<TransportType, typeof Truck> = { truck: Truck, ship: Ship, plane: Plane, train: Train };
 
 const Map = () => {
-  // Get unique locations from cargos
-  const locations = mockCargos.map((cargo) => ({
-    name: cargo.currentLocation,
-    cargo: cargo,
-  }));
+  const activeCargos = mockCargos.filter(c => c.currentStatus === 'in_transit');
+  const activeTransport = mockTransport.filter(t => t.coordinates);
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Карта грузов</h1>
-        <p className="text-muted-foreground">Визуализация текущего расположения грузов</p>
+        <p className="text-muted-foreground">Визуализация текущего расположения</p>
       </div>
 
-      {/* Map Placeholder */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div className="relative h-[400px] bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
@@ -28,59 +33,48 @@ const Map = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">Интерактивная карта</h3>
-                <p className="text-sm text-muted-foreground max-w-sm mx-auto mt-1">
-                  Для отображения интерактивной карты подключите Mapbox или другой картографический сервис
-                </p>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto mt-1">Для отображения подключите Mapbox или Google Maps</p>
               </div>
-            </div>
-            
-            {/* Decorative elements */}
-            <div className="absolute top-8 left-8 animate-pulse">
-              <div className="w-3 h-3 rounded-full bg-success" />
-            </div>
-            <div className="absolute top-16 right-24 animate-pulse delay-100">
-              <div className="w-3 h-3 rounded-full bg-primary" />
-            </div>
-            <div className="absolute bottom-20 left-32 animate-pulse delay-200">
-              <div className="w-3 h-3 rounded-full bg-warning" />
-            </div>
-            <div className="absolute bottom-12 right-16 animate-pulse delay-300">
-              <div className="w-3 h-3 rounded-full bg-info" />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Location List */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {locations.map((loc, index) => (
-          <Card key={index} className="transition-all duration-200 hover:shadow-md">
+        {activeCargos.map((cargo) => (
+          <Card key={cargo.id} className="transition-all duration-200 hover:shadow-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-primary" />
-                {loc.name}
+                <Package className="h-4 w-4 text-primary" />
+                {cargo.cargoId}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Package className="h-4 w-4" />
-                  <span>{loc.cargo.trackingNumber}</span>
-                </div>
-                <Badge variant={loc.cargo.status === 'in_transit' ? 'default' : 'secondary'}>
-                  {loc.cargo.status === 'in_transit' ? (
-                    <span className="flex items-center gap-1">
-                      <Truck className="h-3 w-3" />
-                      В пути
-                    </span>
-                  ) : (
-                    'На месте'
-                  )}
+                <span className="text-sm text-muted-foreground truncate">{cargo.description}</span>
+                <Badge variant={statusConfig[cargo.currentStatus].variant}>
+                  {statusConfig[cargo.currentStatus].label}
                 </Badge>
               </div>
             </CardContent>
           </Card>
         ))}
+        {activeTransport.map((transport) => {
+          const Icon = transportIcons[transport.type];
+          return (
+            <Card key={transport.regNumber} className="transition-all duration-200 hover:shadow-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Icon className="h-4 w-4 text-primary" />
+                  {transport.regNumber}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 text-sm text-muted-foreground">
+                📍 {transport.coordinates?.lat.toFixed(4)}, {transport.coordinates?.lng.toFixed(4)}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

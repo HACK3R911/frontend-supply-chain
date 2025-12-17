@@ -234,7 +234,7 @@ export default function Reports() {
                                 <span>{getWarehouseName(leg.startWarehouseId)} → {getWarehouseName(leg.endWarehouseId)}</span>
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                Транспорт: {leg.assignedTransportId || "Не назначен"} | План: {format(new Date(leg.plannedStart), "dd.MM.yyyy HH:mm")}
+                                Транспорт: {leg.assignedTransportId || "Не назначен"} | План: {leg.plannedStart ? format(new Date(leg.plannedStart), "dd.MM.yyyy HH:mm") : "Не запланировано"}
                               </div>
                               {events.length > 0 && (
                                 <div className="mt-2 space-y-1">

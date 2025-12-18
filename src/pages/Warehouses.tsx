@@ -9,10 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockWarehouses, mockContractors } from "@/data/mock-data";
+import { useWarehouses } from "@/hooks/use-warehouses";
+import { useContractors } from "@/hooks/use-contractors";
 import { WarehouseType } from "@/types/supply-chain";
 import { WarehouseForm } from "@/components/forms/WarehouseForm";
 import { Search, Warehouse, MapPin, User } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const typeConfig: Record<WarehouseType, { label: string; variant: "default" | "secondary" | "outline" }> = {
   main: { label: "Основной", variant: "default" },
@@ -24,7 +26,10 @@ const Warehouses = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  const filteredWarehouses = mockWarehouses.filter((warehouse) => {
+  const { data: warehouses, isLoading: warehousesLoading } = useWarehouses();
+  const { data: contractors, isLoading: contractorsLoading } = useContractors();
+
+  const filteredWarehouses = (warehouses ?? []).filter((warehouse) => {
     const matchesSearch =
       warehouse.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       warehouse.address.toLowerCase().includes(searchQuery.toLowerCase());
@@ -34,8 +39,27 @@ const Warehouses = () => {
 
   const getContactPerson = (contactPersonId?: string) => {
     if (!contactPersonId) return null;
-    return mockContractors.find(c => c.id === contactPersonId);
+    return contractors?.find(c => c.id === contactPersonId);
   };
+
+  if (warehousesLoading || contractorsLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Склады</h1>
+            <p className="text-muted-foreground">Точки хранения и перевалки грузов</p>
+          </div>
+          <Skeleton className="h-10 w-[140px]" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-[150px] rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -44,7 +68,7 @@ const Warehouses = () => {
           <h1 className="text-2xl font-bold text-foreground">Склады</h1>
           <p className="text-muted-foreground">Точки хранения и перевалки грузов</p>
         </div>
-        <WarehouseForm contractors={mockContractors} />
+        <WarehouseForm contractors={contractors ?? []} />
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">

@@ -7,11 +7,14 @@ import { OrderTimeline } from "@/components/orders/OrderTimeline";
 import { CargoCard } from "@/components/orders/CargoCard";
 import { AddEventDialog } from "@/components/orders/AddEventDialog";
 import { RouteMap } from "@/components/orders/RouteMap";
-import { mockOrders, mockCargos, mockRouteLegs, mockRouteSegments } from "@/data/mock-data";
+import { useOrder } from "@/hooks/use-orders";
+import { useCargosByOrderId } from "@/hooks/use-cargos";
+import { useRouteLegs } from "@/hooks/use-route-legs";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { ArrowLeft, Calendar, Building2, DollarSign, Box, User } from "lucide-react";
-import { OrderStatus } from "@/types/supply-chain";
+import { OrderStatus, RouteSegment } from "@/types/supply-chain";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusConfig: Record<OrderStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "Ожидает", variant: "secondary" },
@@ -24,7 +27,23 @@ const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [selectedCargoId, setSelectedCargoId] = useState<string | null>(null);
   
-  const order = mockOrders.find((o) => o.id === id);
+  const { data: order, isLoading: orderLoading } = useOrder(id ?? '');
+  const { data: orderCargos, isLoading: cargosLoading } = useCargosByOrderId(id ?? '');
+  const { data: allRouteLegs, isLoading: routeLegsLoading } = useRouteLegs();
+  
+  if (orderLoading || cargosLoading || routeLegsLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-[200px]" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-[100px]" />
+          ))}
+        </div>
+        <Skeleton className="h-[400px]" />
+      </div>
+    );
+  }
   
   if (!order) {
     return (
@@ -35,9 +54,24 @@ const OrderDetail = () => {
     );
   }
 
-  const orderCargos = mockCargos.filter(c => c.orderId === order.id);
-  const selectedCargo = selectedCargoId ? orderCargos.find((c) => c.id === selectedCargoId) : orderCargos[0];
-  const cargoEvents = selectedCargo ? mockRouteLegs.filter(rl => rl.cargoId === selectedCargo.id).flatMap(rl => rl.events || []) : [];
+  const cargos = orderCargos ?? [];
+  const selectedCargo = selectedCargoId ? cargos.find((c) => c.id === selectedCargoId) : cargos[0];
+  const routeLegs = allRouteLegs ?? [];
+  const cargoEvents = selectedCargo 
+    ? routeLegs.filter(rl => rl.cargoId === selectedCargo.id).flatMap(rl => rl.events || []) 
+    : [];
+
+  // Преобразуем route legs в route segments для карты
+  const routeSegments: RouteSegment[] = routeLegs
+    .filter(rl => selectedCargo && rl.cargoId === selectedCargo.id)
+    .map(rl => ({
+      id: rl.id,
+      from: rl.startWarehouse?.name || rl.startWarehouseId,
+      to: rl.endWarehouse?.name || rl.endWarehouseId,
+      status: rl.status,
+      startTime: rl.plannedStart,
+      transportType: rl.assignedTransport?.type || 'truck',
+    }));
 
   return (
     <div className="p-6 space-y-6">
@@ -63,7 +97,7 @@ const OrderDetail = () => {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <RouteMap segments={mockRouteSegments} />
+          <RouteMap segments={routeSegments} />
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg font-semibold">История событий</CardTitle>
@@ -74,9 +108,9 @@ const OrderDetail = () => {
         </div>
         <div className="space-y-6">
           <Card>
-            <CardHeader><CardTitle className="text-lg font-semibold flex items-center gap-2"><Box className="h-5 w-5" />Грузы ({orderCargos.length})</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg font-semibold flex items-center gap-2"><Box className="h-5 w-5" />Грузы ({cargos.length})</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              {orderCargos.length > 0 ? orderCargos.map((cargo) => (
+              {cargos.length > 0 ? cargos.map((cargo) => (
                 <CargoCard key={cargo.id} cargo={cargo} isSelected={selectedCargo?.id === cargo.id} onClick={() => setSelectedCargoId(cargo.id)} />
               )) : <p className="text-muted-foreground text-center py-4">Нет грузов</p>}
             </CardContent>

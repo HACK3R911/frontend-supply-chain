@@ -16,10 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockContractors } from "@/data/mock-data";
+import { useContractors } from "@/hooks/use-contractors";
 import { ContractorRole } from "@/types/supply-chain";
 import { ContractorForm } from "@/components/forms/ContractorForm";
 import { Search, Building2, Phone } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const roleConfig: Record<ContractorRole, { label: string; variant: "default" | "secondary" | "outline" }> = {
   supplier: { label: "Поставщик", variant: "default" },
@@ -30,8 +31,10 @@ const roleConfig: Record<ContractorRole, { label: string; variant: "default" | "
 const Contractors = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  
+  const { data: contractors, isLoading } = useContractors();
 
-  const filteredContractors = mockContractors.filter((contractor) => {
+  const filteredContractors = (contractors ?? []).filter((contractor) => {
     const matchesSearch =
       contractor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contractor.inn.includes(searchQuery) ||
@@ -39,6 +42,21 @@ const Contractors = () => {
     const matchesRole = roleFilter === "all" || contractor.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Контрагенты</h1>
+            <p className="text-muted-foreground">Управление поставщиками, перевозчиками и клиентами</p>
+          </div>
+          <Skeleton className="h-10 w-[180px]" />
+        </div>
+        <Skeleton className="h-[400px] rounded-lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

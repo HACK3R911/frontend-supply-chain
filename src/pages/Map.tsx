@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { mockCargos, mockTransport } from "@/data/mock-data";
+import { useCargos } from "@/hooks/use-cargos";
+import { useTransport } from "@/hooks/use-transport";
 import { CargoStatus, TransportType } from "@/types/supply-chain";
 import { MapPin, Truck, Package, Ship, Plane, Train } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusConfig: Record<CargoStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   at_warehouse: { label: "На складе", variant: "secondary" },
@@ -14,8 +16,28 @@ const statusConfig: Record<CargoStatus, { label: string; variant: "default" | "s
 const transportIcons: Record<TransportType, typeof Truck> = { truck: Truck, ship: Ship, plane: Plane, train: Train };
 
 const Map = () => {
-  const activeCargos = mockCargos.filter(c => c.currentStatus === 'in_transit');
-  const activeTransport = mockTransport.filter(t => t.coordinates);
+  const { data: cargos, isLoading: cargosLoading } = useCargos();
+  const { data: transport, isLoading: transportLoading } = useTransport();
+
+  if (cargosLoading || transportLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Карта грузов</h1>
+          <p className="text-muted-foreground">Визуализация текущего расположения</p>
+        </div>
+        <Skeleton className="h-[400px] rounded-lg" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-[100px] rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const activeCargos = (cargos ?? []).filter(c => c.currentStatus === 'in_transit');
+  const activeTransport = (transport ?? []).filter(t => t.coordinates);
 
   return (
     <div className="p-6 space-y-6">
@@ -59,18 +81,18 @@ const Map = () => {
             </CardContent>
           </Card>
         ))}
-        {activeTransport.map((transport) => {
-          const Icon = transportIcons[transport.type];
+        {activeTransport.map((t) => {
+          const Icon = transportIcons[t.type];
           return (
-            <Card key={transport.regNumber} className="transition-all duration-200 hover:shadow-md">
+            <Card key={t.regNumber} className="transition-all duration-200 hover:shadow-md">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Icon className="h-4 w-4 text-primary" />
-                  {transport.regNumber}
+                  {t.regNumber}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0 text-sm text-muted-foreground">
-                📍 {transport.coordinates?.lat.toFixed(4)}, {transport.coordinates?.lng.toFixed(4)}
+                📍 {t.coordinates?.lat.toFixed(4)}, {t.coordinates?.lng.toFixed(4)}
               </CardContent>
             </Card>
           );

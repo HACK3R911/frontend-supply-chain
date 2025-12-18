@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { mockCargos } from "@/data/mock-data";
+import { useCargos } from "@/hooks/use-cargos";
+import { useOrders } from "@/hooks/use-orders";
 import { CargoStatus } from "@/types/supply-chain";
 import { CargoForm } from "@/components/forms/CargoForm";
-import { mockOrders } from "@/data/mock-data";
 import { useState } from "react";
 import { Search, Package, Scale, Box } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusConfig: Record<CargoStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   at_warehouse: { label: "На складе", variant: "secondary" },
@@ -17,12 +18,34 @@ const statusConfig: Record<CargoStatus, { label: string; variant: "default" | "s
 
 const Cargos = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  
+  const { data: cargos, isLoading: cargosLoading } = useCargos();
+  const { data: orders, isLoading: ordersLoading } = useOrders();
 
-  const filteredCargos = mockCargos.filter(
+  const filteredCargos = (cargos ?? []).filter(
     (cargo) =>
       cargo.cargoId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       cargo.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (cargosLoading || ordersLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Грузы</h1>
+            <p className="text-muted-foreground">Отслеживание всех грузов в системе</p>
+          </div>
+          <Skeleton className="h-10 w-[140px]" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-[150px] rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -32,7 +55,7 @@ const Cargos = () => {
           <h1 className="text-2xl font-bold text-foreground">Грузы</h1>
           <p className="text-muted-foreground">Отслеживание всех грузов в системе</p>
         </div>
-        <CargoForm orders={mockOrders} />
+        <CargoForm orders={orders ?? []} />
       </div>
 
       {/* Search */}

@@ -16,10 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockTransport, mockContractors } from "@/data/mock-data";
+import { useTransport } from "@/hooks/use-transport";
+import { useContractors } from "@/hooks/use-contractors";
 import { TransportType } from "@/types/supply-chain";
 import { TransportForm } from "@/components/forms/TransportForm";
 import { Search, Truck, Ship, Plane, Train, MapPin } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const typeConfig: Record<TransportType, { label: string; icon: typeof Truck; variant: "default" | "secondary" | "outline" }> = {
   truck: { label: "Грузовик", icon: Truck, variant: "default" },
@@ -32,16 +34,34 @@ const Transport = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  const filteredTransport = mockTransport.filter((transport) => {
-    const matchesSearch = transport.regNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === "all" || transport.type === typeFilter;
+  const { data: transport, isLoading: transportLoading } = useTransport();
+  const { data: contractors, isLoading: contractorsLoading } = useContractors();
+
+  const filteredTransport = (transport ?? []).filter((t) => {
+    const matchesSearch = t.regNumber.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "all" || t.type === typeFilter;
     return matchesSearch && matchesType;
   });
 
   const getContractor = (contractorId?: string) => {
     if (!contractorId) return null;
-    return mockContractors.find(c => c.id === contractorId);
+    return contractors?.find(c => c.id === contractorId);
   };
+
+  if (transportLoading || contractorsLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Транспорт</h1>
+            <p className="text-muted-foreground">Транспортные средства для перевозки грузов</p>
+          </div>
+          <Skeleton className="h-10 w-[180px]" />
+        </div>
+        <Skeleton className="h-[400px] rounded-lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -50,7 +70,7 @@ const Transport = () => {
           <h1 className="text-2xl font-bold text-foreground">Транспорт</h1>
           <p className="text-muted-foreground">Транспортные средства для перевозки грузов</p>
         </div>
-        <TransportForm contractors={mockContractors} />
+        <TransportForm contractors={contractors ?? []} />
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -89,29 +109,29 @@ const Transport = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredTransport.map((transport) => {
-              const contractor = getContractor(transport.contractorId);
-              const TypeIcon = typeConfig[transport.type].icon;
+            {filteredTransport.map((t) => {
+              const contractor = getContractor(t.contractorId);
+              const TypeIcon = typeConfig[t.type].icon;
               return (
-                <TableRow key={transport.regNumber}>
+                <TableRow key={t.regNumber}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <TypeIcon className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium font-mono">{transport.regNumber}</span>
+                      <span className="font-medium font-mono">{t.regNumber}</span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={typeConfig[transport.type].variant}>
-                      {typeConfig[transport.type].label}
+                    <Badge variant={typeConfig[t.type].variant}>
+                      {typeConfig[t.type].label}
                     </Badge>
                   </TableCell>
-                  <TableCell>{transport.capacity.toLocaleString()} кг</TableCell>
+                  <TableCell>{t.capacity.toLocaleString()} кг</TableCell>
                   <TableCell>{contractor?.name || "—"}</TableCell>
                   <TableCell>
-                    {transport.coordinates ? (
+                    {t.coordinates ? (
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <MapPin className="h-3 w-3" />
-                        <span>{transport.coordinates.lat.toFixed(4)}, {transport.coordinates.lng.toFixed(4)}</span>
+                        <span>{t.coordinates.lat.toFixed(4)}, {t.coordinates.lng.toFixed(4)}</span>
                       </div>
                     ) : (
                       "—"

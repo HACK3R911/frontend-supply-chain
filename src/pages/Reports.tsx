@@ -12,7 +12,13 @@ import { CalendarIcon, Download, FileText, TrendingUp, Truck, Warehouse, Clock, 
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { mockOrders, mockCargos, mockContractors, mockWarehouses, mockTransport, mockRouteLegs, mockEvents } from "@/data/mock-data";
+import { useOrders } from "@/hooks/use-orders";
+import { useCargos } from "@/hooks/use-cargos";
+import { useContractors } from "@/hooks/use-contractors";
+import { useWarehouses } from "@/hooks/use-warehouses";
+import { useTransport } from "@/hooks/use-transport";
+import { useRouteLegs, useEvents } from "@/hooks/use-route-legs";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusLabels: Record<string, string> = {
   pending: "Ожидает",
@@ -33,26 +39,37 @@ export default function Reports() {
   const [dateTo, setDateTo] = useState<Date>();
   const [selectedContractor, setSelectedContractor] = useState<string>("all");
 
+  const { data: orders, isLoading: ordersLoading } = useOrders();
+  const { data: cargos, isLoading: cargosLoading } = useCargos();
+  const { data: contractors, isLoading: contractorsLoading } = useContractors();
+  const { data: warehouses, isLoading: warehousesLoading } = useWarehouses();
+  const { data: transport, isLoading: transportLoading } = useTransport();
+  const { data: routeLegs, isLoading: routeLegsLoading } = useRouteLegs();
+  const { data: events, isLoading: eventsLoading } = useEvents();
+
+  const isLoading = ordersLoading || cargosLoading || contractorsLoading || 
+                    warehousesLoading || transportLoading || routeLegsLoading || eventsLoading;
+
   const getContractorName = (id: string) => {
-    return mockContractors.find(c => c.id === id)?.name || "Неизвестно";
+    return contractors?.find(c => c.id === id)?.name || "Неизвестно";
   };
 
   const getWarehouseName = (id: string) => {
-    return mockWarehouses.find(w => w.id === id)?.name || "Неизвестно";
+    return warehouses?.find(w => w.id === id)?.name || "Неизвестно";
   };
 
   // Calculate KPI metrics
-  const totalOrders = mockOrders.length;
-  const deliveredOnTime = mockOrders.filter(o => o.status === "delivered").length;
-  const onTimePercentage = Math.round((deliveredOnTime / totalOrders) * 100);
+  const totalOrders = orders?.length ?? 0;
+  const deliveredOnTime = orders?.filter(o => o.status === "delivered").length ?? 0;
+  const onTimePercentage = totalOrders > 0 ? Math.round((deliveredOnTime / totalOrders) * 100) : 0;
 
   // Carrier efficiency data
-  const carriers = mockContractors.filter(c => c.role === "carrier");
+  const carriers = contractors?.filter(c => c.role === "carrier") ?? [];
   const carrierStats = carriers.map(carrier => {
-    const legs = mockRouteLegs.filter(leg => {
-      const transport = mockTransport.find(t => t.regNumber === leg.assignedTransportId);
-      return transport?.contractorId === carrier.id;
-    });
+    const legs = routeLegs?.filter(leg => {
+      const t = transport?.find(t => t.regNumber === leg.assignedTransportId);
+      return t?.contractorId === carrier.id;
+    }) ?? [];
     return {
       ...carrier,
       completedLegs: legs.filter(l => l.status === "completed").length,
@@ -63,9 +80,9 @@ export default function Reports() {
   });
 
   // Warehouse stats
-  const warehouseStats = mockWarehouses.map(wh => {
-    const incomingLegs = mockRouteLegs.filter(l => l.endWarehouseId === wh.id);
-    const outgoingLegs = mockRouteLegs.filter(l => l.startWarehouseId === wh.id);
+  const warehouseStats = (warehouses ?? []).map(wh => {
+    const incomingLegs = routeLegs?.filter(l => l.endWarehouseId === wh.id) ?? [];
+    const outgoingLegs = routeLegs?.filter(l => l.startWarehouseId === wh.id) ?? [];
     return {
       ...wh,
       incoming: incomingLegs.length,
@@ -75,8 +92,22 @@ export default function Reports() {
     };
   });
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Отчеты</h1>
+            <p className="text-muted-foreground">Аналитика и статистика по логистическим операциям</p>
+          </div>
+        </div>
+        <Skeleton className="h-[600px] rounded-lg" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Отчеты</h1>
@@ -148,7 +179,7 @@ export default function Reports() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все контрагенты</SelectItem>
-                  {mockContractors.map(c => (
+                  {contractors?.map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -180,7 +211,7 @@ export default function Reports() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockOrders.map(order => {
+                  {orders?.map(order => {
                     const cycleDays = order.deliveryDate && order.shipmentDate ? Math.ceil((new Date(order.deliveryDate).getTime() - new Date(order.shipmentDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
                     return (
                       <TableRow key={order.id}>
@@ -214,7 +245,7 @@ export default function Reports() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {mockCargos.slice(0, 3).map(cargo => (
+                {cargos?.slice(0, 3).map(cargo => (
                   <div key={cargo.id} className="border rounded-lg p-4 space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -224,8 +255,8 @@ export default function Reports() {
                       <Badge variant="outline">{cargo.currentStatus}</Badge>
                     </div>
                     <div className="space-y-2">
-                      {mockRouteLegs.filter(leg => leg.cargoId === cargo.id).map((leg, idx) => {
-                        const events = mockEvents.filter(e => e.routeLegId === leg.id);
+                      {routeLegs?.filter(leg => leg.cargoId === cargo.id).map((leg, idx) => {
+                        const legEvents = events?.filter(e => e.routeLegId === leg.id) ?? [];
                         return (
                           <div key={leg.id} className="flex items-start gap-4 pl-4 border-l-2 border-primary/30">
                             <div className="flex-1">
@@ -236,9 +267,9 @@ export default function Reports() {
                               <div className="text-xs text-muted-foreground mt-1">
                                 Транспорт: {leg.assignedTransportId || "Не назначен"} | План: {leg.plannedStart ? format(new Date(leg.plannedStart), "dd.MM.yyyy HH:mm") : "Не запланировано"}
                               </div>
-                              {events.length > 0 && (
+                              {legEvents.length > 0 && (
                                 <div className="mt-2 space-y-1">
-                                  {events.map(event => (
+                                  {legEvents.map(event => (
                                     <div key={event.id} className="text-xs bg-muted/50 rounded px-2 py-1">
                                       <Clock className="inline h-3 w-3 mr-1" />
                                       {format(new Date(event.timestamp), "dd.MM HH:mm")} - {event.eventType}: {event.description}
@@ -365,66 +396,80 @@ export default function Reports() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Заказов в работе</CardDescription>
-                <CardTitle className="text-3xl">{mockOrders.filter(o => o.status === "in_transit").length}</CardTitle>
+                <CardTitle className="text-3xl">{orders?.filter(o => o.status === "in_transit" || o.status === "pending").length ?? 0}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-xs text-muted-foreground">Активные перевозки</p>
+                <p className="text-xs text-muted-foreground">Активные заказы</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardDescription>Завершено за месяц</CardDescription>
-                <CardTitle className="text-3xl">{mockOrders.filter(o => o.status === "delivered").length}</CardTitle>
+                <CardDescription>Всего доставлено</CardDescription>
+                <CardTitle className="text-3xl">{deliveredOnTime}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-xs text-muted-foreground">Доставлено заказов</p>
+                <p className="text-xs text-muted-foreground">За выбранный период</p>
               </CardContent>
             </Card>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Распределение причин задержек</CardTitle>
-              <CardDescription>Анализ факторов, влияющих на сроки доставки</CardDescription>
+              <CardTitle>Анализ соблюдения плановых сроков</CardTitle>
+              <CardDescription>Стратегическая оценка общей эффективности логистического процесса</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span>По вине перевозчика</span>
-                  <div className="flex items-center gap-2">
-                    <Progress value={35} className="w-40" />
-                    <span className="text-sm w-12 text-right">35%</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Задержки на складе</span>
-                  <div className="flex items-center gap-2">
-                    <Progress value={25} className="w-40" />
-                    <span className="text-sm w-12 text-right">25%</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Таможенное оформление</span>
-                  <div className="flex items-center gap-2">
-                    <Progress value={20} className="w-40" />
-                    <span className="text-sm w-12 text-right">20%</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Погодные условия</span>
-                  <div className="flex items-center gap-2">
-                    <Progress value={12} className="w-40" />
-                    <span className="text-sm w-12 text-right">12%</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Прочие причины</span>
-                  <div className="flex items-center gap-2">
-                    <Progress value={8} className="w-40" />
-                    <span className="text-sm w-12 text-right">8%</span>
-                  </div>
-                </div>
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Причина задержки</TableHead>
+                    <TableHead>Количество</TableHead>
+                    <TableHead>Процент</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>По вине перевозчика</TableCell>
+                    <TableCell>3</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Progress value={45} className="w-20" />
+                        <span className="text-sm">45%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Задержка на складе</TableCell>
+                    <TableCell>2</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Progress value={30} className="w-20" />
+                        <span className="text-sm">30%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Таможенные процедуры</TableCell>
+                    <TableCell>1</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Progress value={15} className="w-20" />
+                        <span className="text-sm">15%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>Прочие причины</TableCell>
+                    <TableCell>1</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Progress value={10} className="w-20" />
+                        <span className="text-sm">10%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>

@@ -127,7 +127,7 @@ export function WarehouseForm({ contractors, onSubmit }: WarehouseFormProps) {
               <SelectContent>
                 <SelectItem value="none">Не указано</SelectItem>
                 {contractors.map((contractor) => (
-                  <SelectItem key={contractor.id} value={contractor.id}>
+                  <SelectItem key={contractor.id} value={String(contractor.id)}>
                     {contractor.name}
                   </SelectItem>
                 ))}

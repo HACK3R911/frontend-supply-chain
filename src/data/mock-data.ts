@@ -3,47 +3,47 @@ import {
   TrackingEvent, RouteSegment 
 } from '@/types/supply-chain';
 
-// Контрагенты
+// Контрагенты (соответствует Go модели)
 export const mockContractors: Contractor[] = [
   {
-    id: 'con1',
+    id: 1,
     name: 'ООО "ТехноТрейд"',
-    inn: '7701234567',
-    legalAddress: 'г. Москва, ул. Ленина, д. 10',
-    contacts: '+7 (495) 123-45-67, info@technotrade.ru',
-    role: 'client'
+    type: 'client',
+    contact: '+7 (495) 123-45-67, info@technotrade.ru',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'con2',
+    id: 2,
     name: 'ООО "ЛогистикПро"',
-    inn: '7702345678',
-    legalAddress: 'г. Москва, ул. Транспортная, д. 5',
-    contacts: '+7 (495) 234-56-78, logistics@logistikpro.ru',
-    role: 'carrier'
+    type: 'carrier',
+    contact: '+7 (495) 234-56-78, logistics@logistikpro.ru',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'con3',
+    id: 3,
     name: 'АО "МегаСтрой"',
-    inn: '7801234567',
-    legalAddress: 'г. Санкт-Петербург, пр. Строителей, д. 20',
-    contacts: '+7 (812) 345-67-89, megastroy@mail.ru',
-    role: 'client'
+    type: 'client',
+    contact: '+7 (812) 345-67-89, megastroy@mail.ru',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'con4',
+    id: 4,
     name: 'ООО "ПромСнаб"',
-    inn: '7703456789',
-    legalAddress: 'г. Нижний Новгород, ул. Заводская, д. 15',
-    contacts: '+7 (831) 456-78-90, promsnab@yandex.ru',
-    role: 'supplier'
+    type: 'supplier',
+    contact: '+7 (831) 456-78-90, promsnab@yandex.ru',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
   },
   {
-    id: 'con5',
+    id: 5,
     name: 'ООО "ТрансГрупп"',
-    inn: '7704567890',
-    legalAddress: 'г. Казань, ул. Грузовая, д. 8',
-    contacts: '+7 (843) 567-89-01, transgroup@mail.ru',
-    role: 'carrier'
+    type: 'carrier',
+    contact: '+7 (843) 567-89-01, transgroup@mail.ru',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
   }
 ];
 
@@ -54,28 +54,28 @@ export const mockWarehouses: Warehouse[] = [
     name: 'Склад А (Москва)',
     address: 'г. Москва, ул. Складская, д. 1',
     type: 'main',
-    contactPersonId: 'con2'
+    contactPersonId: '2'
   },
   {
     id: 'wh2',
     name: 'Транзитный пункт (Нижний Новгород)',
     address: 'г. Нижний Новгород, ул. Логистическая, д. 10',
     type: 'transit',
-    contactPersonId: 'con4'
+    contactPersonId: '4'
   },
   {
     id: 'wh3',
     name: 'Склад Б (Казань)',
     address: 'г. Казань, ул. Распределительная, д. 5',
     type: 'distribution',
-    contactPersonId: 'con5'
+    contactPersonId: '5'
   },
   {
     id: 'wh4',
     name: 'Склад В (Санкт-Петербург)',
     address: 'г. Санкт-Петербург, ул. Портовая, д. 12',
     type: 'main',
-    contactPersonId: 'con3'
+    contactPersonId: '3'
   }
 ];
 
@@ -86,27 +86,27 @@ export const mockTransport: Transport[] = [
     type: 'truck',
     capacity: 5000,
     coordinates: { lat: 55.7558, lng: 37.6173 },
-    contractorId: 'con2'
+    contractorId: '2'
   },
   {
     regNumber: 'В456ВВ78',
     type: 'truck',
     capacity: 10000,
     coordinates: { lat: 56.2965, lng: 43.9361 },
-    contractorId: 'con2'
+    contractorId: '2'
   },
   {
     regNumber: 'С789СС16',
     type: 'truck',
     capacity: 3000,
     coordinates: { lat: 55.7887, lng: 49.1221 },
-    contractorId: 'con5'
+    contractorId: '5'
   },
   {
     regNumber: 'TRAIN-001',
     type: 'train',
     capacity: 50000,
-    contractorId: 'con5'
+    contractorId: '5'
   }
 ];
 
@@ -236,10 +236,10 @@ export const mockOrders: Order[] = [
     deliveryDate: '2024-01-17T18:00:00Z',
     totalCost: 150000,
     status: 'in_transit',
-    senderId: 'con4',
-    recipientId: 'con1',
-    sender: mockContractors.find(c => c.id === 'con4'),
-    recipient: mockContractors.find(c => c.id === 'con1'),
+    senderId: '4',
+    recipientId: '1',
+    sender: mockContractors.find(c => c.id === 4),
+    recipient: mockContractors.find(c => c.id === 1),
     cargos: mockCargos.filter(c => c.orderId === 'o1')
   },
   {
@@ -250,10 +250,10 @@ export const mockOrders: Order[] = [
     deliveryDate: '2024-01-14T12:00:00Z',
     totalCost: 250000,
     status: 'delivered',
-    senderId: 'con4',
-    recipientId: 'con3',
-    sender: mockContractors.find(c => c.id === 'con4'),
-    recipient: mockContractors.find(c => c.id === 'con3'),
+    senderId: '4',
+    recipientId: '3',
+    sender: mockContractors.find(c => c.id === 4),
+    recipient: mockContractors.find(c => c.id === 3),
     cargos: mockCargos.filter(c => c.orderId === 'o2')
   },
   {
@@ -262,10 +262,10 @@ export const mockOrders: Order[] = [
     createdAt: '2024-01-16T14:00:00Z',
     totalCost: 75000,
     status: 'pending',
-    senderId: 'con4',
-    recipientId: 'con1',
-    sender: mockContractors.find(c => c.id === 'con4'),
-    recipient: mockContractors.find(c => c.id === 'con1')
+    senderId: '4',
+    recipientId: '1',
+    sender: mockContractors.find(c => c.id === 4),
+    recipient: mockContractors.find(c => c.id === 1)
   },
   {
     id: 'o4',
@@ -275,10 +275,10 @@ export const mockOrders: Order[] = [
     deliveryDate: '2024-01-16T20:00:00Z',
     totalCost: 320000,
     status: 'in_transit',
-    senderId: 'con4',
-    recipientId: 'con3',
-    sender: mockContractors.find(c => c.id === 'con4'),
-    recipient: mockContractors.find(c => c.id === 'con3')
+    senderId: '4',
+    recipientId: '3',
+    sender: mockContractors.find(c => c.id === 4),
+    recipient: mockContractors.find(c => c.id === 3)
   },
   {
     id: 'o5',
@@ -286,10 +286,10 @@ export const mockOrders: Order[] = [
     createdAt: '2024-01-12T11:00:00Z',
     totalCost: 45000,
     status: 'cancelled',
-    senderId: 'con4',
-    recipientId: 'con1',
-    sender: mockContractors.find(c => c.id === 'con4'),
-    recipient: mockContractors.find(c => c.id === 'con1')
+    senderId: '4',
+    recipientId: '1',
+    sender: mockContractors.find(c => c.id === 4),
+    recipient: mockContractors.find(c => c.id === 1)
   }
 ];
 

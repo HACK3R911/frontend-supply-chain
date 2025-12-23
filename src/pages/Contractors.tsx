@@ -17,12 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useContractors } from "@/hooks/use-contractors";
-import { ContractorRole } from "@/types/supply-chain";
 import { ContractorForm } from "@/components/forms/ContractorForm";
 import { Search, Building2, Phone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const roleConfig: Record<ContractorRole, { label: string; variant: "default" | "secondary" | "outline" }> = {
+const typeConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   supplier: { label: "Поставщик", variant: "default" },
   carrier: { label: "Перевозчик", variant: "secondary" },
   client: { label: "Клиент", variant: "outline" },
@@ -30,17 +29,16 @@ const roleConfig: Record<ContractorRole, { label: string; variant: "default" | "
 
 const Contractors = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   
   const { data: contractors, isLoading } = useContractors();
 
   const filteredContractors = (contractors ?? []).filter((contractor) => {
     const matchesSearch =
       contractor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contractor.inn.includes(searchQuery) ||
-      contractor.legalAddress.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === "all" || contractor.role === roleFilter;
-    return matchesSearch && matchesRole;
+      contractor.contact.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "all" || contractor.type === typeFilter;
+    return matchesSearch && matchesType;
   });
 
   if (isLoading) {
@@ -72,18 +70,18 @@ const Contractors = () => {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Поиск по имени, ИНН, адресу..."
+            placeholder="Поиск по имени, контактам..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Роль" />
+            <SelectValue placeholder="Тип" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Все роли</SelectItem>
+            <SelectItem value="all">Все типы</SelectItem>
             <SelectItem value="supplier">Поставщик</SelectItem>
             <SelectItem value="carrier">Перевозчик</SelectItem>
             <SelectItem value="client">Клиент</SelectItem>
@@ -95,34 +93,36 @@ const Contractors = () => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>ID</TableHead>
               <TableHead>Наименование</TableHead>
-              <TableHead>ИНН</TableHead>
-              <TableHead>Роль</TableHead>
-              <TableHead>Адрес</TableHead>
+              <TableHead>Тип</TableHead>
               <TableHead>Контакты</TableHead>
+              <TableHead>Создан</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredContractors.map((contractor) => (
               <TableRow key={contractor.id}>
+                <TableCell className="font-mono text-sm">{contractor.id}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">{contractor.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className="font-mono">{contractor.inn}</TableCell>
                 <TableCell>
-                  <Badge variant={roleConfig[contractor.role].variant}>
-                    {roleConfig[contractor.role].label}
+                  <Badge variant={typeConfig[contractor.type]?.variant || "outline"}>
+                    {typeConfig[contractor.type]?.label || contractor.type}
                   </Badge>
                 </TableCell>
-                <TableCell className="max-w-[200px] truncate">{contractor.legalAddress}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Phone className="h-3 w-3" />
-                    <span className="truncate max-w-[150px]">{contractor.contacts}</span>
+                    <span className="truncate max-w-[200px]">{contractor.contact}</span>
                   </div>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {new Date(contractor.created_at).toLocaleDateString('ru-RU')}
                 </TableCell>
               </TableRow>
             ))}

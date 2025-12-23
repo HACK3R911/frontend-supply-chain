@@ -62,7 +62,7 @@ export function TransportForm({ contractors, onSubmit }: TransportFormProps) {
     setFormData({ regNumber: "", type: "truck", capacity: 0, contractorId: undefined });
   };
 
-  const carriers = contractors.filter(c => c.role === 'carrier');
+  const carriers = contractors.filter(c => c.type === 'carrier');
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -131,7 +131,7 @@ export function TransportForm({ contractors, onSubmit }: TransportFormProps) {
               <SelectContent>
                 <SelectItem value="none">Не указан</SelectItem>
                 {carriers.map((contractor) => (
-                  <SelectItem key={contractor.id} value={contractor.id}>
+                  <SelectItem key={contractor.id} value={String(contractor.id)}>
                     {contractor.name}
                   </SelectItem>
                 ))}

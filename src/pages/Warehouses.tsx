@@ -39,7 +39,7 @@ const Warehouses = () => {
 
   const getContactPerson = (contactPersonId?: string) => {
     if (!contactPersonId) return null;
-    return contractors?.find(c => c.id === contactPersonId);
+    return contractors?.find(c => String(c.id) === contactPersonId);
   };
 
   if (warehousesLoading || contractorsLoading) {

@@ -14,7 +14,7 @@ export function useContractors(filter?: ContractorsFilter) {
   });
 }
 
-export function useContractor(id: string) {
+export function useContractor(id: number) {
   return useQuery({
     queryKey: [CONTRACTORS_QUERY_KEY, id],
     queryFn: () => contractorsApi.getById(id),
@@ -57,7 +57,7 @@ export function useDeleteContractor() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => contractorsApi.delete(id),
+    mutationFn: (id: number) => contractorsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [CONTRACTORS_QUERY_KEY] });
       toast.success('Контрагент успешно удален');

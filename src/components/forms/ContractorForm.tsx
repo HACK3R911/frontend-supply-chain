@@ -17,11 +17,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ContractorRole } from "@/types/supply-chain";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useCreateContractor } from "@/hooks/use-contractors";
 
-const roleLabels: Record<ContractorRole, string> = {
+const typeLabels: Record<string, string> = {
   supplier: "Поставщик",
   carrier: "Перевозчик",
   client: "Клиент",
@@ -33,39 +33,40 @@ interface ContractorFormProps {
 
 export interface ContractorFormData {
   name: string;
-  inn: string;
-  legalAddress: string;
-  contacts: string;
-  role: ContractorRole;
+  type: string;
+  contact: string;
 }
 
 export function ContractorForm({ onSubmit }: ContractorFormProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<ContractorFormData>({
     name: "",
-    inn: "",
-    legalAddress: "",
-    contacts: "",
-    role: "client",
+    type: "client",
+    contact: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const createContractor = useCreateContractor();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.inn || !formData.legalAddress) {
+    if (!formData.name || !formData.type) {
       toast.error("Заполните все обязательные поля");
       return;
     }
 
-    if (formData.inn.length !== 10 && formData.inn.length !== 12) {
-      toast.error("ИНН должен содержать 10 или 12 цифр");
-      return;
+    try {
+      await createContractor.mutateAsync({
+        name: formData.name,
+        type: formData.type,
+        contact: formData.contact,
+      });
+      onSubmit?.(formData);
+      setOpen(false);
+      setFormData({ name: "", type: "client", contact: "" });
+    } catch (error) {
+      // Error handled by mutation
     }
-
-    onSubmit?.(formData);
-    toast.success("Контрагент успешно добавлен");
-    setOpen(false);
-    setFormData({ name: "", inn: "", legalAddress: "", contacts: "", role: "client" });
   };
 
   return (
@@ -91,54 +92,31 @@ export function ContractorForm({ onSubmit }: ContractorFormProps) {
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="inn">ИНН *</Label>
-              <Input
-                id="inn"
-                value={formData.inn}
-                onChange={(e) => setFormData({ ...formData, inn: e.target.value.replace(/\D/g, '') })}
-                placeholder="1234567890"
-                maxLength={12}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Роль *</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value: ContractorRole) => setFormData({ ...formData, role: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(roleLabels).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="type">Тип *</Label>
+            <Select
+              value={formData.type}
+              onValueChange={(value) => setFormData({ ...formData, type: value })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(typeLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="legalAddress">Юридический адрес *</Label>
+            <Label htmlFor="contact">Контакты</Label>
             <Textarea
-              id="legalAddress"
-              value={formData.legalAddress}
-              onChange={(e) => setFormData({ ...formData, legalAddress: e.target.value })}
-              placeholder="г. Москва, ул. Примерная, д. 1"
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="contacts">Контакты</Label>
-            <Textarea
-              id="contacts"
-              value={formData.contacts}
-              onChange={(e) => setFormData({ ...formData, contacts: e.target.value })}
+              id="contact"
+              value={formData.contact}
+              onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
               placeholder="+7 (999) 123-45-67, email@example.com"
               rows={2}
             />
@@ -148,7 +126,9 @@ export function ContractorForm({ onSubmit }: ContractorFormProps) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Отмена
             </Button>
-            <Button type="submit">Сохранить</Button>
+            <Button type="submit" disabled={createContractor.isPending}>
+              {createContractor.isPending ? "Сохранение..." : "Сохранить"}
+            </Button>
           </div>
         </form>
       </DialogContent>

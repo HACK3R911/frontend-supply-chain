@@ -7,14 +7,14 @@ export type WarehouseType = 'main' | 'transit' | 'distribution';
 export type TransportType = 'truck' | 'ship' | 'plane' | 'train';
 export type RouteLegStatus = 'completed' | 'active' | 'pending';
 
-// Контрагент
+// Контрагент (соответствует Go модели)
 export interface Contractor {
-  id: string;
+  id: number;
   name: string;
-  inn: string;
-  legalAddress: string;
-  contacts: string;
-  role: ContractorRole;
+  type: string; // e.g., supplier, carrier, client
+  contact: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Склад

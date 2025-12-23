@@ -77,8 +77,8 @@ export function OrderForm({ contractors, onSubmit }: OrderFormProps) {
     });
   };
 
-  const suppliers = contractors.filter(c => c.role === 'supplier');
-  const clients = contractors.filter(c => c.role === 'client');
+  const suppliers = contractors.filter(c => c.type === 'supplier');
+  const clients = contractors.filter(c => c.type === 'client');
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -134,7 +134,7 @@ export function OrderForm({ contractors, onSubmit }: OrderFormProps) {
               </SelectTrigger>
               <SelectContent>
                 {suppliers.map((contractor) => (
-                  <SelectItem key={contractor.id} value={contractor.id}>
+                  <SelectItem key={contractor.id} value={String(contractor.id)}>
                     {contractor.name}
                   </SelectItem>
                 ))}
@@ -153,7 +153,7 @@ export function OrderForm({ contractors, onSubmit }: OrderFormProps) {
               </SelectTrigger>
               <SelectContent>
                 {clients.map((contractor) => (
-                  <SelectItem key={contractor.id} value={contractor.id}>
+                  <SelectItem key={contractor.id} value={String(contractor.id)}>
                     {contractor.name}
                   </SelectItem>
                 ))}

@@ -21,14 +21,12 @@ import {
 // ============ Contractor ============
 export interface CreateContractorRequest {
   name: string;
-  inn: string;
-  legalAddress: string;
-  contacts: string;
-  role: ContractorRole;
+  type: string; // e.g., supplier, carrier, client
+  contact: string;
 }
 
 export interface UpdateContractorRequest extends Partial<CreateContractorRequest> {
-  id: string;
+  id: number;
 }
 
 export type ContractorResponse = Contractor;
@@ -210,7 +208,7 @@ export interface CargosFilter {
 }
 
 export interface ContractorsFilter {
-  role?: ContractorRole;
+  type?: string;
   search?: string;
 }
 

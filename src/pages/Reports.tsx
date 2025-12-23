@@ -51,7 +51,7 @@ export default function Reports() {
                     warehousesLoading || transportLoading || routeLegsLoading || eventsLoading;
 
   const getContractorName = (id: string) => {
-    return contractors?.find(c => c.id === id)?.name || "Неизвестно";
+    return contractors?.find(c => String(c.id) === id)?.name || "Неизвестно";
   };
 
   const getWarehouseName = (id: string) => {
@@ -64,11 +64,11 @@ export default function Reports() {
   const onTimePercentage = totalOrders > 0 ? Math.round((deliveredOnTime / totalOrders) * 100) : 0;
 
   // Carrier efficiency data
-  const carriers = contractors?.filter(c => c.role === "carrier") ?? [];
+  const carriers = contractors?.filter(c => c.type === "carrier") ?? [];
   const carrierStats = carriers.map(carrier => {
     const legs = routeLegs?.filter(leg => {
       const t = transport?.find(t => t.regNumber === leg.assignedTransportId);
-      return t?.contractorId === carrier.id;
+      return t?.contractorId === String(carrier.id);
     }) ?? [];
     return {
       ...carrier,
@@ -180,7 +180,7 @@ export default function Reports() {
                 <SelectContent>
                   <SelectItem value="all">Все контрагенты</SelectItem>
                   {contractors?.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -312,7 +312,7 @@ export default function Reports() {
                   {carrierStats.map(carrier => (
                     <TableRow key={carrier.id}>
                       <TableCell className="font-medium">{carrier.name}</TableCell>
-                      <TableCell>{carrier.inn}</TableCell>
+                      <TableCell>{carrier.type}</TableCell>
                       <TableCell>{carrier.completedLegs} / {carrier.totalLegs}</TableCell>
                       <TableCell>{carrier.avgTime}</TableCell>
                       <TableCell>

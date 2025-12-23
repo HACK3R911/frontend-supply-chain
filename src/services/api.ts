@@ -59,26 +59,25 @@ export const contractorsApi = {
   getAll: async (filter?: ContractorsFilter): Promise<ContractorsListResponse> => {
     if (USE_MOCK_DATA) {
       let result = [...mockContractors];
-      if (filter?.role) {
-        result = result.filter(c => c.role === filter.role);
+      if (filter?.type) {
+        result = result.filter(c => c.type === filter.type);
       }
       if (filter?.search) {
         const search = filter.search.toLowerCase();
         result = result.filter(c =>
           c.name.toLowerCase().includes(search) ||
-          c.inn.includes(search) ||
-          c.legalAddress.toLowerCase().includes(search)
+          c.contact.toLowerCase().includes(search)
         );
       }
       return result;
     }
     const params: Record<string, string> = {};
-    if (filter?.role) params.role = filter.role;
+    if (filter?.type) params.type = filter.type;
     if (filter?.search) params.search = filter.search;
     return apiClient.get<ContractorsListResponse>('/contractors', params);
   },
 
-  getById: async (id: string): Promise<ContractorResponse> => {
+  getById: async (id: number): Promise<ContractorResponse> => {
     if (USE_MOCK_DATA) {
       const contractor = mockContractors.find(c => c.id === id);
       if (!contractor) throw new Error('Contractor not found');
@@ -89,7 +88,13 @@ export const contractorsApi = {
 
   create: async (data: CreateContractorRequest): Promise<ContractorResponse> => {
     if (USE_MOCK_DATA) {
-      const newContractor = { ...data, id: `con${Date.now()}` };
+      const now = new Date().toISOString();
+      const newContractor = { 
+        ...data, 
+        id: Date.now(),
+        created_at: now,
+        updated_at: now,
+      };
       mockContractors.push(newContractor);
       return newContractor;
     }
@@ -100,13 +105,17 @@ export const contractorsApi = {
     if (USE_MOCK_DATA) {
       const index = mockContractors.findIndex(c => c.id === data.id);
       if (index === -1) throw new Error('Contractor not found');
-      mockContractors[index] = { ...mockContractors[index], ...data };
+      mockContractors[index] = { 
+        ...mockContractors[index], 
+        ...data,
+        updated_at: new Date().toISOString(),
+      };
       return mockContractors[index];
     }
     return apiClient.put<ContractorResponse>(`/contractors/${data.id}`, data);
   },
 
-  delete: async (id: string): Promise<void> => {
+  delete: async (id: number): Promise<void> => {
     if (USE_MOCK_DATA) {
       const index = mockContractors.findIndex(c => c.id === id);
       if (index !== -1) mockContractors.splice(index, 1);
@@ -283,8 +292,8 @@ export const ordersApi = {
 
   create: async (data: CreateOrderRequest): Promise<OrderResponse> => {
     if (USE_MOCK_DATA) {
-      const sender = mockContractors.find(c => c.id === data.senderId);
-      const recipient = mockContractors.find(c => c.id === data.recipientId);
+      const sender = mockContractors.find(c => String(c.id) === data.senderId);
+      const recipient = mockContractors.find(c => String(c.id) === data.recipientId);
       const newOrder = {
         ...data,
         id: `o${Date.now()}`,

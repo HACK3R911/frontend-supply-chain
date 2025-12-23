@@ -45,7 +45,7 @@ const Transport = () => {
 
   const getContractor = (contractorId?: string) => {
     if (!contractorId) return null;
-    return contractors?.find(c => c.id === contractorId);
+    return contractors?.find(c => String(c.id) === contractorId);
   };
 
   if (transportLoading || contractorsLoading) {

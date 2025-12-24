@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/select";
 import { useWarehouses } from "@/hooks/use-warehouses";
 import { useContractors } from "@/hooks/use-contractors";
-import { WarehouseType } from "@/types/supply-chain";
+import { WarehouseType, Warehouse } from "@/types/supply-chain";
 import { WarehouseForm } from "@/components/forms/WarehouseForm";
-import { Search, Warehouse, MapPin, User } from "lucide-react";
+import { Search, Warehouse as WarehouseIcon, MapPin, User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const typeConfig: Record<WarehouseType, { label: string; variant: "default" | "secondary" | "outline" }> = {
@@ -25,6 +25,8 @@ const typeConfig: Record<WarehouseType, { label: string; variant: "default" | "s
 const Warehouses = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const { data: warehouses, isLoading: warehousesLoading } = useWarehouses();
   const { data: contractors, isLoading: contractorsLoading } = useContractors();
@@ -40,6 +42,11 @@ const Warehouses = () => {
   const getContactPerson = (contactPersonId?: string) => {
     if (!contactPersonId) return null;
     return contractors?.find(c => String(c.id) === contactPersonId);
+  };
+
+  const handleCardClick = (warehouse: Warehouse) => {
+    setEditingWarehouse(warehouse);
+    setEditDialogOpen(true);
   };
 
   if (warehousesLoading || contractorsLoading) {
@@ -98,12 +105,16 @@ const Warehouses = () => {
         {filteredWarehouses.map((warehouse) => {
           const contactPerson = getContactPerson(warehouse.contactPersonId);
           return (
-            <Card key={warehouse.id} className="transition-all duration-200 hover:shadow-md">
+            <Card 
+              key={warehouse.id} 
+              className="transition-all duration-200 hover:shadow-md cursor-pointer"
+              onClick={() => handleCardClick(warehouse)}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <Warehouse className="h-4 w-4 text-primary" />
+                      <WarehouseIcon className="h-4 w-4 text-primary" />
                       {warehouse.name}
                     </CardTitle>
                   </div>
@@ -134,6 +145,15 @@ const Warehouses = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Dialog */}
+      <WarehouseForm
+        contractors={contractors ?? []}
+        warehouse={editingWarehouse ?? undefined}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        trigger={<></>}
+      />
     </div>
   );
 };

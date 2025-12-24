@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,9 +16,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { OrderStatus, Contractor } from "@/types/supply-chain";
-import { Plus } from "lucide-react";
+import { OrderStatus, Contractor, Order } from "@/types/supply-chain";
+import { Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useCreateOrder, useUpdateOrder } from "@/hooks/use-orders";
 
 const statusLabels: Record<OrderStatus, string> = {
   pending: "Ожидает",
@@ -29,7 +30,10 @@ const statusLabels: Record<OrderStatus, string> = {
 
 interface OrderFormProps {
   contractors: Contractor[];
-  onSubmit?: (data: OrderFormData) => void;
+  order?: Order;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
 }
 
 export interface OrderFormData {
@@ -42,8 +46,13 @@ export interface OrderFormData {
   deliveryDate?: string;
 }
 
-export function OrderForm({ contractors, onSubmit }: OrderFormProps) {
-  const [open, setOpen] = useState(false);
+export function OrderForm({ contractors, order, open: controlledOpen, onOpenChange, trigger }: OrderFormProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+
+  const isEditMode = !!order;
+
   const [formData, setFormData] = useState<OrderFormData>({
     orderNumber: "",
     totalCost: 0,
@@ -52,7 +61,32 @@ export function OrderForm({ contractors, onSubmit }: OrderFormProps) {
     recipientId: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (order && open) {
+      setFormData({
+        orderNumber: order.orderNumber,
+        totalCost: order.totalCost,
+        status: order.status,
+        senderId: order.sender?.id ? String(order.sender.id) : "",
+        recipientId: order.recipient?.id ? String(order.recipient.id) : "",
+        shipmentDate: order.shipmentDate ? new Date(order.shipmentDate).toISOString().slice(0, 16) : undefined,
+        deliveryDate: order.deliveryDate ? new Date(order.deliveryDate).toISOString().slice(0, 16) : undefined,
+      });
+    } else if (!open) {
+      setFormData({
+        orderNumber: "",
+        totalCost: 0,
+        status: "pending",
+        senderId: "",
+        recipientId: "",
+      });
+    }
+  }, [order, open]);
+
+  const createOrder = useCreateOrder();
+  const updateOrder = useUpdateOrder();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.orderNumber || !formData.senderId || !formData.recipientId) {
@@ -65,34 +99,63 @@ export function OrderForm({ contractors, onSubmit }: OrderFormProps) {
       return;
     }
 
-    onSubmit?.(formData);
-    toast.success("Заказ успешно создан");
-    setOpen(false);
-    setFormData({
-      orderNumber: "",
-      totalCost: 0,
-      status: "pending",
-      senderId: "",
-      recipientId: "",
-    });
+    try {
+      if (isEditMode && order) {
+        await updateOrder.mutateAsync({
+          id: order.id,
+          totalCost: formData.totalCost,
+          status: formData.status,
+          senderId: formData.senderId,
+          recipientId: formData.recipientId,
+          shipmentDate: formData.shipmentDate,
+          deliveryDate: formData.deliveryDate,
+        });
+      } else {
+        await createOrder.mutateAsync({
+          orderNumber: formData.orderNumber,
+          totalCost: formData.totalCost,
+          status: formData.status,
+          senderId: formData.senderId,
+          recipientId: formData.recipientId,
+          shipmentDate: formData.shipmentDate,
+          deliveryDate: formData.deliveryDate,
+        });
+      }
+      setOpen(false);
+    } catch (error) {
+      // Error handled by mutation
+    }
   };
 
+  const isPending = createOrder.isPending || updateOrder.isPending;
   const suppliers = contractors.filter(c => c.type === 'supplier');
   const clients = contractors.filter(c => c.type === 'client');
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Новый заказ
-        </Button>
-      </DialogTrigger>
+      {trigger ?? (
+        <DialogTrigger asChild>
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Новый заказ
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Новый заказ</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {isEditMode && <Pencil className="h-4 w-4" />}
+            {isEditMode ? "Редактирование заказа" : "Новый заказ"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isEditMode && (
+            <div className="space-y-2">
+              <Label>ID</Label>
+              <Input value={order?.id} disabled className="bg-muted" />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="orderNumber">Номер заказа *</Label>
@@ -198,7 +261,9 @@ export function OrderForm({ contractors, onSubmit }: OrderFormProps) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Отмена
             </Button>
-            <Button type="submit">Создать</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Сохранение..." : "Сохранить"}
+            </Button>
           </div>
         </form>
       </DialogContent>

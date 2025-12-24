@@ -20,6 +20,7 @@ import { useContractors } from "@/hooks/use-contractors";
 import { ContractorForm } from "@/components/forms/ContractorForm";
 import { Search, Building2, Phone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Contractor } from "@/types/supply-chain";
 
 const typeConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   supplier: { label: "Поставщик", variant: "default" },
@@ -30,6 +31,8 @@ const typeConfig: Record<string, { label: string; variant: "default" | "secondar
 const Contractors = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [editingContractor, setEditingContractor] = useState<Contractor | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   
   const { data: contractors, isLoading } = useContractors();
 
@@ -40,6 +43,11 @@ const Contractors = () => {
     const matchesType = typeFilter === "all" || contractor.type === typeFilter;
     return matchesSearch && matchesType;
   });
+
+  const handleRowClick = (contractor: Contractor) => {
+    setEditingContractor(contractor);
+    setEditDialogOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -102,7 +110,11 @@ const Contractors = () => {
           </TableHeader>
           <TableBody>
             {filteredContractors.map((contractor) => (
-              <TableRow key={contractor.id}>
+              <TableRow 
+                key={contractor.id} 
+                onClick={() => handleRowClick(contractor)}
+                className="cursor-pointer hover:bg-muted/50"
+              >
                 <TableCell className="font-mono text-sm">{contractor.id}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -136,6 +148,14 @@ const Contractors = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Edit Dialog */}
+      <ContractorForm
+        contractor={editingContractor ?? undefined}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        trigger={<></>}
+      />
     </div>
   );
 };

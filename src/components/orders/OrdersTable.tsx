@@ -17,14 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Order, OrderStatus } from "@/types/supply-chain";
+import { Order, OrderStatus, Contractor } from "@/types/supply-chain";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Search, ArrowUpDown, Eye } from "lucide-react";
+import { Search, ArrowUpDown, Eye, Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
+import { OrderForm } from "@/components/forms/OrderForm";
 
 interface OrdersTableProps {
   orders: Order[];
+  contractors: Contractor[];
 }
 
 const statusConfig: Record<OrderStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -37,11 +39,13 @@ const statusConfig: Record<OrderStatus, { label: string; variant: "default" | "s
 type SortField = 'orderNumber' | 'createdAt' | 'status' | 'totalCost';
 type SortDirection = 'asc' | 'desc';
 
-export function OrdersTable({ orders }: OrdersTableProps) {
+export function OrdersTable({ orders, contractors }: OrdersTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -50,6 +54,13 @@ export function OrdersTable({ orders }: OrdersTableProps) {
       setSortField(field);
       setSortDirection('asc');
     }
+  };
+
+  const handleRowClick = (order: Order, e: React.MouseEvent) => {
+    // Don't open edit dialog if clicking on action buttons
+    if ((e.target as HTMLElement).closest('button, a')) return;
+    setEditingOrder(order);
+    setEditDialogOpen(true);
   };
 
   const filteredOrders = orders
@@ -111,49 +122,25 @@ export function OrdersTable({ orders }: OrdersTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSort('orderNumber')}
-                  className="-ml-4 h-8 gap-1"
-                >
-                  Номер заказа
-                  <ArrowUpDown className="h-3 w-3" />
+                <Button variant="ghost" size="sm" onClick={() => handleSort('orderNumber')} className="-ml-4 h-8 gap-1">
+                  Номер заказа <ArrowUpDown className="h-3 w-3" />
                 </Button>
               </TableHead>
               <TableHead>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSort('status')}
-                  className="-ml-4 h-8 gap-1"
-                >
-                  Статус
-                  <ArrowUpDown className="h-3 w-3" />
+                <Button variant="ghost" size="sm" onClick={() => handleSort('status')} className="-ml-4 h-8 gap-1">
+                  Статус <ArrowUpDown className="h-3 w-3" />
                 </Button>
               </TableHead>
               <TableHead>Отправитель</TableHead>
               <TableHead>Получатель</TableHead>
               <TableHead>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSort('createdAt')}
-                  className="-ml-4 h-8 gap-1"
-                >
-                  Дата создания
-                  <ArrowUpDown className="h-3 w-3" />
+                <Button variant="ghost" size="sm" onClick={() => handleSort('createdAt')} className="-ml-4 h-8 gap-1">
+                  Дата создания <ArrowUpDown className="h-3 w-3" />
                 </Button>
               </TableHead>
               <TableHead>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSort('totalCost')}
-                  className="-ml-4 h-8 gap-1"
-                >
-                  Стоимость
-                  <ArrowUpDown className="h-3 w-3" />
+                <Button variant="ghost" size="sm" onClick={() => handleSort('totalCost')} className="-ml-4 h-8 gap-1">
+                  Стоимость <ArrowUpDown className="h-3 w-3" />
                 </Button>
               </TableHead>
               <TableHead className="w-[100px]">Действия</TableHead>
@@ -161,42 +148,44 @@ export function OrdersTable({ orders }: OrdersTableProps) {
           </TableHeader>
           <TableBody>
             {filteredOrders.map((order) => (
-              <TableRow key={order.id}>
+              <TableRow 
+                key={order.id} 
+                onClick={(e) => handleRowClick(order, e)}
+                className="cursor-pointer hover:bg-muted/50"
+              >
                 <TableCell className="font-medium">{order.orderNumber}</TableCell>
                 <TableCell>
                   <Badge variant={statusConfig[order.status].variant}>
                     {statusConfig[order.status].label}
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm">{order.sender?.name || '—'}</span>
-                </TableCell>
-                <TableCell>
-                  <span className="text-sm">{order.recipient?.name || '—'}</span>
-                </TableCell>
-                <TableCell>
-                  {format(new Date(order.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })}
-                </TableCell>
+                <TableCell><span className="text-sm">{order.sender?.name || '—'}</span></TableCell>
+                <TableCell><span className="text-sm">{order.recipient?.name || '—'}</span></TableCell>
+                <TableCell>{format(new Date(order.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })}</TableCell>
                 <TableCell>{order.totalCost.toLocaleString()} ₽</TableCell>
                 <TableCell>
                   <Button variant="ghost" size="icon" asChild>
-                    <Link to={`/orders/${order.id}`}>
-                      <Eye className="h-4 w-4" />
-                    </Link>
+                    <Link to={`/orders/${order.id}`}><Eye className="h-4 w-4" /></Link>
                   </Button>
                 </TableCell>
               </TableRow>
             ))}
             {filteredOrders.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  Заказы не найдены
-                </TableCell>
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Заказы не найдены</TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+
+      <OrderForm
+        contractors={contractors}
+        order={editingOrder ?? undefined}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        trigger={<></>}
+      />
     </div>
   );
 }

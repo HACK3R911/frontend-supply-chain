@@ -1,11 +1,11 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useCargos } from "@/hooks/use-cargos";
 import { useOrders } from "@/hooks/use-orders";
-import { CargoStatus } from "@/types/supply-chain";
+import { CargoStatus, Cargo } from "@/types/supply-chain";
 import { CargoForm } from "@/components/forms/CargoForm";
-import { useState } from "react";
 import { Search, Package, Scale, Box } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -18,6 +18,8 @@ const statusConfig: Record<CargoStatus, { label: string; variant: "default" | "s
 
 const Cargos = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingCargo, setEditingCargo] = useState<Cargo | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   
   const { data: cargos, isLoading: cargosLoading } = useCargos();
   const { data: orders, isLoading: ordersLoading } = useOrders();
@@ -27,6 +29,11 @@ const Cargos = () => {
       cargo.cargoId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       cargo.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleCardClick = (cargo: Cargo) => {
+    setEditingCargo(cargo);
+    setEditDialogOpen(true);
+  };
 
   if (cargosLoading || ordersLoading) {
     return (
@@ -72,7 +79,11 @@ const Cargos = () => {
       {/* Cargo Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filteredCargos.map((cargo) => (
-          <Card key={cargo.id} className="transition-all duration-200 hover:shadow-md">
+          <Card 
+            key={cargo.id} 
+            className="transition-all duration-200 hover:shadow-md cursor-pointer"
+            onClick={() => handleCardClick(cargo)}
+          >
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
@@ -108,6 +119,15 @@ const Cargos = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Dialog */}
+      <CargoForm
+        orders={orders ?? []}
+        cargo={editingCargo ?? undefined}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        trigger={<></>}
+      />
     </div>
   );
 };

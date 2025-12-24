@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { useTransport } from "@/hooks/use-transport";
 import { useContractors } from "@/hooks/use-contractors";
-import { TransportType } from "@/types/supply-chain";
+import { TransportType, Transport } from "@/types/supply-chain";
 import { TransportForm } from "@/components/forms/TransportForm";
 import { Search, Truck, Ship, Plane, Train, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,9 +30,11 @@ const typeConfig: Record<TransportType, { label: string; icon: typeof Truck; var
   train: { label: "Поезд", icon: Train, variant: "secondary" },
 };
 
-const Transport = () => {
+const TransportPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [editingTransport, setEditingTransport] = useState<Transport | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const { data: transport, isLoading: transportLoading } = useTransport();
   const { data: contractors, isLoading: contractorsLoading } = useContractors();
@@ -46,6 +48,11 @@ const Transport = () => {
   const getContractor = (contractorId?: string) => {
     if (!contractorId) return null;
     return contractors?.find(c => String(c.id) === contractorId);
+  };
+
+  const handleRowClick = (t: Transport) => {
+    setEditingTransport(t);
+    setEditDialogOpen(true);
   };
 
   if (transportLoading || contractorsLoading) {
@@ -113,7 +120,11 @@ const Transport = () => {
               const contractor = getContractor(t.contractorId);
               const TypeIcon = typeConfig[t.type].icon;
               return (
-                <TableRow key={t.regNumber}>
+                <TableRow 
+                  key={t.regNumber}
+                  onClick={() => handleRowClick(t)}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <TypeIcon className="h-4 w-4 text-muted-foreground" />
@@ -150,8 +161,17 @@ const Transport = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Edit Dialog */}
+      <TransportForm
+        contractors={contractors ?? []}
+        transport={editingTransport ?? undefined}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        trigger={<></>}
+      />
     </div>
   );
 };
 
-export default Transport;
+export default TransportPage;

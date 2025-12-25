@@ -222,3 +222,82 @@ export interface TransportFilter {
   contractorId?: string;
   search?: string;
 }
+
+// ============ Reports Filter ============
+export interface ReportsFilter {
+  dateFrom?: string;
+  dateTo?: string;
+  contractorId?: number;
+}
+
+// ============ Reports Response Types ============
+export interface OrderStatusReportItem {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  senderId: string;
+  senderName: string;
+  recipientId: string;
+  recipientName: string;
+  status: OrderStatus;
+  shipmentDate?: string;
+  deliveryDate?: string;
+  cycleDays: number;
+  isDelayed: boolean;
+}
+
+export interface CargoTrackingReportItem {
+  cargoId: string;
+  description: string;
+  currentStatus: CargoStatus;
+  routeLegs: Array<{
+    id: string;
+    sequenceOrder: number;
+    startWarehouseId: string;
+    startWarehouseName: string;
+    endWarehouseId: string;
+    endWarehouseName: string;
+    assignedTransportId?: string;
+    plannedStart?: string;
+    status: RouteLegStatus;
+    events: Array<{
+      id: string;
+      eventType: EventType;
+      timestamp: string;
+      description: string;
+    }>;
+  }>;
+}
+
+export interface CarrierEfficiencyReportItem {
+  contractorId: number;
+  name: string;
+  type: string;
+  completedLegs: number;
+  totalLegs: number;
+  avgTimeHours: number;
+  delayPercent: number;
+}
+
+export interface WarehouseLoadReportItem {
+  warehouseId: string;
+  name: string;
+  type: WarehouseType;
+  incoming: number;
+  outgoing: number;
+  avgStayDays: number;
+  loadFactor: number;
+}
+
+export interface KPIReportData {
+  onTimePercentage: number;
+  avgDelayDays: number;
+  ordersInProgress: number;
+  totalDelivered: number;
+  totalOrders: number;
+  delayReasons: Array<{
+    reason: string;
+    count: number;
+    percentage: number;
+  }>;
+}

@@ -36,6 +36,12 @@ import {
   ContractorsFilter,
   WarehousesFilter,
   TransportFilter,
+  ReportsFilter,
+  OrderStatusReportItem,
+  CargoTrackingReportItem,
+  CarrierEfficiencyReportItem,
+  WarehouseLoadReportItem,
+  KPIReportData,
 } from '@/types/api';
 
 // Флаг для использования mock-данных
@@ -511,5 +517,166 @@ export const dashboardApi = {
       return dashboardStats;
     }
     return apiClient.get<DashboardStats>('/dashboard/stats');
+  },
+};
+
+// ============ Reports API ============
+export const reportsApi = {
+  getOrderStatusReport: async (filter?: ReportsFilter): Promise<OrderStatusReportItem[]> => {
+    if (USE_MOCK_DATA) {
+      let result = mockOrders.map(order => {
+        const sender = mockContractors.find(c => String(c.id) === order.senderId);
+        const recipient = mockContractors.find(c => String(c.id) === order.recipientId);
+        const cycleDays = order.deliveryDate && order.shipmentDate 
+          ? Math.ceil((new Date(order.deliveryDate).getTime() - new Date(order.shipmentDate).getTime()) / (1000 * 60 * 60 * 24)) 
+          : 0;
+        return {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          createdAt: order.createdAt,
+          senderId: order.senderId,
+          senderName: sender?.name || 'Неизвестно',
+          recipientId: order.recipientId,
+          recipientName: recipient?.name || 'Неизвестно',
+          status: order.status,
+          shipmentDate: order.shipmentDate,
+          deliveryDate: order.deliveryDate,
+          cycleDays,
+          isDelayed: false,
+        };
+      });
+      
+      if (filter?.dateFrom) {
+        result = result.filter(o => new Date(o.createdAt) >= new Date(filter.dateFrom!));
+      }
+      if (filter?.dateTo) {
+        result = result.filter(o => new Date(o.createdAt) <= new Date(filter.dateTo!));
+      }
+      if (filter?.contractorId) {
+        result = result.filter(o => 
+          o.senderId === String(filter.contractorId) || 
+          o.recipientId === String(filter.contractorId)
+        );
+      }
+      return result;
+    }
+    const params: Record<string, string> = {};
+    if (filter?.dateFrom) params.dateFrom = filter.dateFrom;
+    if (filter?.dateTo) params.dateTo = filter.dateTo;
+    if (filter?.contractorId) params.contractorId = String(filter.contractorId);
+    return apiClient.get<OrderStatusReportItem[]>('/reports/orders', params);
+  },
+
+  getCargoTrackingReport: async (filter?: ReportsFilter): Promise<CargoTrackingReportItem[]> => {
+    if (USE_MOCK_DATA) {
+      return mockCargos.map(cargo => {
+        const legs = mockRouteLegs.filter(leg => leg.cargoId === cargo.id);
+        return {
+          cargoId: cargo.cargoId,
+          description: cargo.description,
+          currentStatus: cargo.currentStatus,
+          routeLegs: legs.map(leg => {
+            const startWh = mockWarehouses.find(w => w.id === leg.startWarehouseId);
+            const endWh = mockWarehouses.find(w => w.id === leg.endWarehouseId);
+            const legEvents = mockEvents.filter(e => e.routeLegId === leg.id);
+            return {
+              id: leg.id,
+              sequenceOrder: leg.sequenceOrder,
+              startWarehouseId: leg.startWarehouseId,
+              startWarehouseName: startWh?.name || 'Неизвестно',
+              endWarehouseId: leg.endWarehouseId,
+              endWarehouseName: endWh?.name || 'Неизвестно',
+              assignedTransportId: leg.assignedTransportId,
+              plannedStart: leg.plannedStart,
+              status: leg.status,
+              events: legEvents.map(e => ({
+                id: e.id,
+                eventType: e.eventType,
+                timestamp: e.timestamp,
+                description: e.description,
+              })),
+            };
+          }),
+        };
+      });
+    }
+    const params: Record<string, string> = {};
+    if (filter?.dateFrom) params.dateFrom = filter.dateFrom;
+    if (filter?.dateTo) params.dateTo = filter.dateTo;
+    return apiClient.get<CargoTrackingReportItem[]>('/reports/tracking', params);
+  },
+
+  getCarrierEfficiencyReport: async (filter?: ReportsFilter): Promise<CarrierEfficiencyReportItem[]> => {
+    if (USE_MOCK_DATA) {
+      const carriers = mockContractors.filter(c => c.type === 'carrier');
+      return carriers.map(carrier => {
+        const legs = mockRouteLegs.filter(leg => {
+          const t = mockTransport.find(t => t.regNumber === leg.assignedTransportId);
+          return t?.contractorId === String(carrier.id);
+        });
+        return {
+          contractorId: carrier.id,
+          name: carrier.name,
+          type: carrier.type,
+          completedLegs: legs.filter(l => l.status === 'completed').length,
+          totalLegs: legs.length,
+          avgTimeHours: Math.round(Math.random() * 24 + 12),
+          delayPercent: Math.round(Math.random() * 15),
+        };
+      });
+    }
+    const params: Record<string, string> = {};
+    if (filter?.dateFrom) params.dateFrom = filter.dateFrom;
+    if (filter?.dateTo) params.dateTo = filter.dateTo;
+    if (filter?.contractorId) params.contractorId = String(filter.contractorId);
+    return apiClient.get<CarrierEfficiencyReportItem[]>('/reports/carriers', params);
+  },
+
+  getWarehouseLoadReport: async (filter?: ReportsFilter): Promise<WarehouseLoadReportItem[]> => {
+    if (USE_MOCK_DATA) {
+      return mockWarehouses.map(wh => {
+        const incomingLegs = mockRouteLegs.filter(l => l.endWarehouseId === wh.id);
+        const outgoingLegs = mockRouteLegs.filter(l => l.startWarehouseId === wh.id);
+        return {
+          warehouseId: wh.id,
+          name: wh.name,
+          type: wh.type,
+          incoming: incomingLegs.length,
+          outgoing: outgoingLegs.length,
+          avgStayDays: Math.round(Math.random() * 3 + 1),
+          loadFactor: Math.round(Math.random() * 40 + 50),
+        };
+      });
+    }
+    const params: Record<string, string> = {};
+    if (filter?.dateFrom) params.dateFrom = filter.dateFrom;
+    if (filter?.dateTo) params.dateTo = filter.dateTo;
+    return apiClient.get<WarehouseLoadReportItem[]>('/reports/warehouses', params);
+  },
+
+  getKPIReport: async (filter?: ReportsFilter): Promise<KPIReportData> => {
+    if (USE_MOCK_DATA) {
+      const totalOrders = mockOrders.length;
+      const delivered = mockOrders.filter(o => o.status === 'delivered').length;
+      const inProgress = mockOrders.filter(o => o.status === 'in_transit').length;
+      return {
+        onTimePercentage: totalOrders > 0 ? Math.round((delivered / totalOrders) * 100) : 0,
+        avgDelayDays: 1.2,
+        ordersInProgress: inProgress,
+        totalDelivered: delivered,
+        totalOrders,
+        delayReasons: [
+          { reason: 'Задержка на таможне', count: 3, percentage: 30 },
+          { reason: 'Погодные условия', count: 2, percentage: 20 },
+          { reason: 'Технические неисправности', count: 3, percentage: 30 },
+          { reason: 'Проблемы с документами', count: 2, percentage: 20 },
+        ],
+      };
+    }
+    const params: Record<string, string> = {};
+    if (filter?.dateFrom) params.dateFrom = filter.dateFrom;
+    if (filter?.dateTo) params.dateTo = filter.dateTo;
+    if (filter?.contractorId) params.contractorId = String(filter.contractorId);
+    return apiClient.get<KPIReportData>('/reports/kpi', params);
   },
 };

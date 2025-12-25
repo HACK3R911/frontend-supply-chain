@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,13 +12,16 @@ import { CalendarIcon, Download, FileText, TrendingUp, Truck, Warehouse, Clock, 
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useOrders } from "@/hooks/use-orders";
-import { useCargos } from "@/hooks/use-cargos";
 import { useContractors } from "@/hooks/use-contractors";
-import { useWarehouses } from "@/hooks/use-warehouses";
-import { useTransport } from "@/hooks/use-transport";
-import { useRouteLegs, useEvents } from "@/hooks/use-route-legs";
+import { 
+  useOrderStatusReport, 
+  useCargoTrackingReport, 
+  useCarrierEfficiencyReport, 
+  useWarehouseLoadReport, 
+  useKPIReport 
+} from "@/hooks/use-reports";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ReportsFilter } from "@/types/api";
 
 const statusLabels: Record<string, string> = {
   pending: "Ожидает",
@@ -38,59 +41,33 @@ export default function Reports() {
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
   const [selectedContractor, setSelectedContractor] = useState<string>("all");
+  const [appliedFilter, setAppliedFilter] = useState<ReportsFilter>({});
 
-  const { data: orders, isLoading: ordersLoading } = useOrders();
-  const { data: cargos, isLoading: cargosLoading } = useCargos();
   const { data: contractors, isLoading: contractorsLoading } = useContractors();
-  const { data: warehouses, isLoading: warehousesLoading } = useWarehouses();
-  const { data: transport, isLoading: transportLoading } = useTransport();
-  const { data: routeLegs, isLoading: routeLegsLoading } = useRouteLegs();
-  const { data: events, isLoading: eventsLoading } = useEvents();
 
-  const isLoading = ordersLoading || cargosLoading || contractorsLoading || 
-                    warehousesLoading || transportLoading || routeLegsLoading || eventsLoading;
+  // Reports data with filter
+  const { data: ordersReport, isLoading: ordersLoading } = useOrderStatusReport(appliedFilter);
+  const { data: trackingReport, isLoading: trackingLoading } = useCargoTrackingReport(appliedFilter);
+  const { data: carriersReport, isLoading: carriersLoading } = useCarrierEfficiencyReport(appliedFilter);
+  const { data: warehousesReport, isLoading: warehousesLoading } = useWarehouseLoadReport(appliedFilter);
+  const { data: kpiReport, isLoading: kpiLoading } = useKPIReport(appliedFilter);
 
-  const getContractorName = (id: string) => {
-    return contractors?.find(c => String(c.id) === id)?.name || "Неизвестно";
+  const isLoading = ordersLoading || contractorsLoading || trackingLoading || 
+                    carriersLoading || warehousesLoading || kpiLoading;
+
+  const handleApplyFilter = () => {
+    const newFilter: ReportsFilter = {};
+    if (dateFrom) {
+      newFilter.dateFrom = dateFrom.toISOString();
+    }
+    if (dateTo) {
+      newFilter.dateTo = dateTo.toISOString();
+    }
+    if (selectedContractor && selectedContractor !== "all") {
+      newFilter.contractorId = Number(selectedContractor);
+    }
+    setAppliedFilter(newFilter);
   };
-
-  const getWarehouseName = (id: string) => {
-    return warehouses?.find(w => w.id === id)?.name || "Неизвестно";
-  };
-
-  // Calculate KPI metrics
-  const totalOrders = orders?.length ?? 0;
-  const deliveredOnTime = orders?.filter(o => o.status === "delivered").length ?? 0;
-  const onTimePercentage = totalOrders > 0 ? Math.round((deliveredOnTime / totalOrders) * 100) : 0;
-
-  // Carrier efficiency data
-  const carriers = contractors?.filter(c => c.type === "carrier") ?? [];
-  const carrierStats = carriers.map(carrier => {
-    const legs = routeLegs?.filter(leg => {
-      const t = transport?.find(t => t.regNumber === leg.assignedTransportId);
-      return t?.contractorId === String(carrier.id);
-    }) ?? [];
-    return {
-      ...carrier,
-      completedLegs: legs.filter(l => l.status === "completed").length,
-      totalLegs: legs.length,
-      delayPercent: Math.round(Math.random() * 15),
-      avgTime: Math.round(Math.random() * 24 + 12),
-    };
-  });
-
-  // Warehouse stats
-  const warehouseStats = (warehouses ?? []).map(wh => {
-    const incomingLegs = routeLegs?.filter(l => l.endWarehouseId === wh.id) ?? [];
-    const outgoingLegs = routeLegs?.filter(l => l.startWarehouseId === wh.id) ?? [];
-    return {
-      ...wh,
-      incoming: incomingLegs.length,
-      outgoing: outgoingLegs.length,
-      avgStayDays: Math.round(Math.random() * 3 + 1),
-      loadFactor: Math.round(Math.random() * 40 + 50),
-    };
-  });
 
   if (isLoading) {
     return (
@@ -184,7 +161,7 @@ export default function Reports() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="secondary">Применить</Button>
+              <Button variant="secondary" onClick={handleApplyFilter}>Применить</Button>
             </div>
           </CardContent>
         </Card>
@@ -211,25 +188,22 @@ export default function Reports() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders?.map(order => {
-                    const cycleDays = order.deliveryDate && order.shipmentDate ? Math.ceil((new Date(order.deliveryDate).getTime() - new Date(order.shipmentDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-                    return (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.orderNumber}</TableCell>
-                        <TableCell>{format(new Date(order.createdAt), "dd.MM.yyyy")}</TableCell>
-                        <TableCell>{getContractorName(order.senderId)}</TableCell>
-                        <TableCell>{getContractorName(order.recipientId)}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={statusColors[order.status]}>
-                            {statusLabels[order.status]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{order.shipmentDate ? format(new Date(order.shipmentDate), "dd.MM.yyyy") : "-"}</TableCell>
-                        <TableCell>{order.deliveryDate ? format(new Date(order.deliveryDate), "dd.MM.yyyy") : "-"}</TableCell>
-                        <TableCell>{cycleDays}</TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {ordersReport?.map(order => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                      <TableCell>{format(new Date(order.createdAt), "dd.MM.yyyy")}</TableCell>
+                      <TableCell>{order.senderName}</TableCell>
+                      <TableCell>{order.recipientName}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={statusColors[order.status]}>
+                          {statusLabels[order.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{order.shipmentDate ? format(new Date(order.shipmentDate), "dd.MM.yyyy") : "-"}</TableCell>
+                      <TableCell>{order.deliveryDate ? format(new Date(order.deliveryDate), "dd.MM.yyyy") : "-"}</TableCell>
+                      <TableCell>{order.cycleDays}</TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -245,8 +219,8 @@ export default function Reports() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {cargos?.slice(0, 3).map(cargo => (
-                  <div key={cargo.id} className="border rounded-lg p-4 space-y-4">
+                {trackingReport?.slice(0, 5).map(cargo => (
+                  <div key={cargo.cargoId} className="border rounded-lg p-4 space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="font-semibold">{cargo.cargoId}</h4>
@@ -255,32 +229,29 @@ export default function Reports() {
                       <Badge variant="outline">{cargo.currentStatus}</Badge>
                     </div>
                     <div className="space-y-2">
-                      {routeLegs?.filter(leg => leg.cargoId === cargo.id).map((leg, idx) => {
-                        const legEvents = events?.filter(e => e.routeLegId === leg.id) ?? [];
-                        return (
-                          <div key={leg.id} className="flex items-start gap-4 pl-4 border-l-2 border-primary/30">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 text-sm">
-                                <span className="font-medium">Участок {idx + 1}:</span>
-                                <span>{getWarehouseName(leg.startWarehouseId)} → {getWarehouseName(leg.endWarehouseId)}</span>
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Транспорт: {leg.assignedTransportId || "Не назначен"} | План: {leg.plannedStart ? format(new Date(leg.plannedStart), "dd.MM.yyyy HH:mm") : "Не запланировано"}
-                              </div>
-                              {legEvents.length > 0 && (
-                                <div className="mt-2 space-y-1">
-                                  {legEvents.map(event => (
-                                    <div key={event.id} className="text-xs bg-muted/50 rounded px-2 py-1">
-                                      <Clock className="inline h-3 w-3 mr-1" />
-                                      {format(new Date(event.timestamp), "dd.MM HH:mm")} - {event.eventType}: {event.description}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
+                      {cargo.routeLegs.map((leg, idx) => (
+                        <div key={leg.id} className="flex items-start gap-4 pl-4 border-l-2 border-primary/30">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="font-medium">Участок {idx + 1}:</span>
+                              <span>{leg.startWarehouseName} → {leg.endWarehouseName}</span>
                             </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Транспорт: {leg.assignedTransportId || "Не назначен"} | План: {leg.plannedStart ? format(new Date(leg.plannedStart), "dd.MM.yyyy HH:mm") : "Не запланировано"}
+                            </div>
+                            {leg.events.length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                {leg.events.map(event => (
+                                  <div key={event.id} className="text-xs bg-muted/50 rounded px-2 py-1">
+                                    <Clock className="inline h-3 w-3 mr-1" />
+                                    {format(new Date(event.timestamp), "dd.MM HH:mm")} - {event.eventType}: {event.description}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -301,7 +272,7 @@ export default function Reports() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Перевозчик</TableHead>
-                    <TableHead>ИНН</TableHead>
+                    <TableHead>Тип</TableHead>
                     <TableHead>Выполнено участков</TableHead>
                     <TableHead>Среднее время (ч)</TableHead>
                     <TableHead>% задержек</TableHead>
@@ -309,12 +280,12 @@ export default function Reports() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {carrierStats.map(carrier => (
-                    <TableRow key={carrier.id}>
+                  {carriersReport?.map(carrier => (
+                    <TableRow key={carrier.contractorId}>
                       <TableCell className="font-medium">{carrier.name}</TableCell>
                       <TableCell>{carrier.type}</TableCell>
                       <TableCell>{carrier.completedLegs} / {carrier.totalLegs}</TableCell>
-                      <TableCell>{carrier.avgTime}</TableCell>
+                      <TableCell>{carrier.avgTimeHours}</TableCell>
                       <TableCell>
                         <span className={carrier.delayPercent > 10 ? "text-destructive" : "text-green-600"}>
                           {carrier.delayPercent}%
@@ -351,8 +322,8 @@ export default function Reports() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {warehouseStats.map(wh => (
-                    <TableRow key={wh.id}>
+                  {warehousesReport?.map(wh => (
+                    <TableRow key={wh.warehouseId}>
                       <TableCell className="font-medium">{wh.name}</TableCell>
                       <TableCell>{wh.type}</TableCell>
                       <TableCell>{wh.incoming}</TableCell>
@@ -378,16 +349,16 @@ export default function Reports() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Доставлено в срок</CardDescription>
-                <CardTitle className="text-3xl text-green-600">{onTimePercentage}%</CardTitle>
+                <CardTitle className="text-3xl text-green-600">{kpiReport?.onTimePercentage ?? 0}%</CardTitle>
               </CardHeader>
               <CardContent>
-                <Progress value={onTimePercentage} className="h-2" />
+                <Progress value={kpiReport?.onTimePercentage ?? 0} className="h-2" />
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Средняя задержка</CardDescription>
-                <CardTitle className="text-3xl">1.2 дня</CardTitle>
+                <CardTitle className="text-3xl">{kpiReport?.avgDelayDays ?? 0} дня</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">По всем заказам</p>
@@ -396,7 +367,7 @@ export default function Reports() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Заказов в работе</CardDescription>
-                <CardTitle className="text-3xl">{orders?.filter(o => o.status === "in_transit" || o.status === "pending").length ?? 0}</CardTitle>
+                <CardTitle className="text-3xl">{kpiReport?.ordersInProgress ?? 0}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">Активные заказы</p>
@@ -405,7 +376,7 @@ export default function Reports() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Всего доставлено</CardDescription>
-                <CardTitle className="text-3xl">{deliveredOnTime}</CardTitle>
+                <CardTitle className="text-3xl">{kpiReport?.totalDelivered ?? 0}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">За выбранный период</p>
@@ -428,46 +399,18 @@ export default function Reports() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow>
-                    <TableCell>По вине перевозчика</TableCell>
-                    <TableCell>3</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={45} className="w-20" />
-                        <span className="text-sm">45%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>Задержка на складе</TableCell>
-                    <TableCell>2</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={30} className="w-20" />
-                        <span className="text-sm">30%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>Таможенные процедуры</TableCell>
-                    <TableCell>1</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={15} className="w-20" />
-                        <span className="text-sm">15%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>Прочие причины</TableCell>
-                    <TableCell>1</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={10} className="w-20" />
-                        <span className="text-sm">10%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  {kpiReport?.delayReasons.map((reason, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{reason.reason}</TableCell>
+                      <TableCell>{reason.count}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress value={reason.percentage} className="w-20" />
+                          <span className="text-sm">{reason.percentage}%</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
